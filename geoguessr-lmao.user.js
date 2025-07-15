@@ -341,16 +341,25 @@
     teasers.forEach((teaser) => {
       // Get map id from href
       const href = teaser.getAttribute("href");
-      const idMatch = href && href.match(/\/maps\/([a-zA-Z0-9]+)/);
+      const idMatch = href && href.match(/\/maps\/([^/?#]+)/);
       if (!idMatch) return;
       const mapId = idMatch[1];
-      const map = maps.find((m) => m.id === mapId);
+
+      // Try to find by id or by slug (for official maps)
+      let map = maps.find((m) => m.id === mapId || m.slug === mapId);
       if (!map) return;
+
       // Compute all tags (user, api, meta)
       const allTags = [...new Set([...(map.tags || []), ...(userTags[mapId] || [])])];
       if (isLearnableMeta(mapId) && !allTags.includes("Learnable Meta")) {
         allTags.push("Learnable Meta");
       }
+
+      // Add "Official" tag for official maps
+      if (map.isUserMap === false) {
+        allTags.push("Official");
+      }
+
       // Filter logic: hide if not matching selected tags
       if (selectedTags.length > 0) {
         if (filterMode === "ALL") {
@@ -368,18 +377,47 @@
         }
       }
       teaser.closest("li").style.display = "";
+      
       const tagsContainer = findTagsContainer(teaser);
-      if (!tagsContainer) return;
+      if (!tagsContainer) {
+        console.warn("[LMAO] Tags container not found for map", map.slug);
+        return;
+      }
+
       // Remove only our own controls
       tagsContainer.querySelectorAll(".lmao-map-teaser_tag, .lmao-tag-input").forEach((e) => e.remove());
-      // Hide or show native API tags based on toggle (do not use random classnames)
+
+      // Add Official tag as a default tag if present and showApiTags is true
+      if (tagVisibility.showApiTags && allTags.includes("Official")) {
+        const tagDiv = document.createElement("span");
+        tagDiv.className = API_TAG_CLASS;
+        tagDiv.textContent = "Official";
+        tagDiv.style.cursor = "default";
+        tagDiv.addEventListener(
+          "mousedown",
+          (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          },
+          true
+        );
+        tagDiv.addEventListener(
+          "click",
+          (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          },
+          true
+        );
+        tagsContainer.appendChild(tagDiv);
+      }
+
+      // Hide or show native API tags based on toggle
       Array.from(tagsContainer.children).forEach((child) => {
         if (child.tagName === "DIV" && child.className && child.className.includes("map-teaser_tag") && !child.className.includes("user-tag") && !child.className.includes("api-tag") && !child.className.includes("lmao-tag-input")) {
           child.style.display = tagVisibility.showApiTags ? "" : "none";
         }
-
         child.style.cursor = "default";
-
         // Make unclickable (stop link navigation)
         child.addEventListener(
           "mousedown",
@@ -398,6 +436,7 @@
           true
         );
       });
+      
       // Add user tags if enabled
       if (tagVisibility.showUserTags) {
         (userTags[mapId] || []).forEach((tag) => {
@@ -448,6 +487,7 @@
           tagsContainer.appendChild(tagDiv);
         });
       }
+
       // Add Learnable Meta tag if present
       if (tagVisibility.showLearnableMetaTags && isLearnableMeta(mapId)) {
         const tagDiv = document.createElement("span");
@@ -616,7 +656,7 @@
       if (isLearnableMeta(map.id)) metaTagsSet.add("Learnable Meta");
     });
     let userTagsList = Array.from(userTagsSet).sort();
-    const apiTagsList = Array.from(apiTagsSet).sort();
+    const apiTagsList = ["Official", ...Array.from(apiTagsSet).sort()];
     const metaTagsList = metaTagsSet.has("Learnable Meta") ? ["Learnable Meta"] : [];
     let selectedTags = [];
     let currentUserTags = { ...userTags };
