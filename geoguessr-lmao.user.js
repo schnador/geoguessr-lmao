@@ -4,13 +4,43 @@
 // @version      1.0
 // @description  Adds folder organization to liked maps on GeoGuessr
 // @author       snador
-// @match        https://www.geoguessr.com/me/likes
+// @match        https://www.geoguessr.com/*
 // @grant        none
 // @run-at       document-end
 // ==/UserScript==
 
 (function () {
-  "use strict";
+  'use strict';
+
+  // --- CONFIGURATION OBJECT ---
+  /**
+   * Central configuration for LMAO userscript.
+   */
+  const CONFIG = {
+    version: '1.0.0',
+    features: {
+      enhancedUI: true,
+      debugMode: false,
+    },
+    validPaths: [
+      '/me/likes',
+      '/maps/community',
+    ],
+    validTabs: [
+      undefined,
+      'liked-maps',
+    ],
+  };
+
+  /**
+   * Debug logger for LMAO.
+   * @param {...any} args
+   */
+  function debugLog(...args) {
+    if (CONFIG.features.debugMode) {
+      console.log('[LMAO Debug]', ...args);
+    }
+  }
 
   // --- CONSTANTS & LOCALSTORAGE KEYS ---
   const LOCALSTORAGE_USER_TAGS_KEY = "lmaoUserTags";
@@ -485,7 +515,7 @@
 
     const container = grid.closest('div[class*="container_content__"]');
     if (container) container.style.maxWidth = "100%";
-    
+
     const likesMapDiv = grid.closest('div[class*="likes_map__"]');
     if (likesMapDiv) likesMapDiv.style.display = "flex";
 
@@ -496,15 +526,15 @@
     }
 
     function onTagFilterChange(newTags) { selectedTags = newTags; rerender(); }
-    
+
     function onEditModeToggle(newEditMode) { editMode = newEditMode; rerender(); }
-    
+
     function onTagVisibilityChange(newVisibility) { tagVisibility = newVisibility; rerender(); }
-    
+
     function onFilterModeToggle(newMode) { filterMode = newMode; rerender(); }
-    
+
     function onCollapseChange(newCollapse) { filterCollapse = newCollapse; saveFilterCollapse(filterCollapse); rebuildControls(); }
-    
+
     function onTagAdd(map, tag) {
       const key = getMapKey(map);
       currentUserTags[key] = currentUserTags[key] || [];
@@ -536,25 +566,79 @@
     rerender();
   }
 
-  // --- PAGE NAVIGATION HANDLING ---
-  function setupPageNavigationWatcher() {
-    let lastUrl = location.href;
-    const check = () => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        if (location.pathname === "/me/likes") setTimeout(init, 500);
-      }
-    };
-    setInterval(check, 500);
+  /**
+   * Checks if the current page is one where the script should activate.
+   * @returns {boolean}
+   */
+  function isActivePage() {
+    const { pathname, search } = window.location;
+    if (pathname === '/me/likes') return true;
+    if (pathname === '/maps/community') {
+      const params = new URLSearchParams(search);
+      return params.get('tab') === 'liked-maps';
+    }
+    return false;
   }
 
-  // --- WAIT FOR PAGE ---
-  const waitForLoad = async () => {
-    while (!document.body || !document.querySelector('div[class*="grid_grid_"]')) {
-      await sleep(300);
+  // --- PAGE NAVIGATION HANDLING (MutationObserver-based) ---
+  /**
+   * Observe URL and DOM changes to trigger script activation on SPA navigation.
+   */
+  function observePageAndGrid() {
+    let lastUrl = location.href;
+    let gridInitialized = false;
+
+    /**
+     * Try to initialize the script if on the correct page and grid is present.
+     */
+    function tryInit() {
+      if (!isActivePage()) {
+        gridInitialized = false;
+        return;
+      }
+      const grid = document.querySelector('div[class*="grid_grid__"]');
+      if (grid && !gridInitialized) {
+        gridInitialized = true;
+        init();
+      }
     }
-    init();
-    setupPageNavigationWatcher();
+
+    // Observe URL changes (pushState, replaceState, popstate)
+    const origPushState = history.pushState;
+    const origReplaceState = history.replaceState;
+    history.pushState = function (...args) {
+      origPushState.apply(this, args);
+      window.dispatchEvent(new Event('locationchange'));
+    };
+    history.replaceState = function (...args) {
+      origReplaceState.apply(this, args);
+      window.dispatchEvent(new Event('locationchange'));
+    };
+    window.addEventListener('popstate', () => window.dispatchEvent(new Event('locationchange')));
+    window.addEventListener('locationchange', () => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        gridInitialized = false;
+        tryInit();
+      }
+    });
+
+    // Observe DOM changes for grid
+    const observer = new MutationObserver(() => {
+      tryInit();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Initial check
+    tryInit();
+  }
+
+  // --- WAIT FOR PAGE (MutationObserver version) ---
+  const waitForLoad = async () => {
+    while (!document.body) {
+      await sleep(100);
+    }
+    observePageAndGrid();
   };
 
   waitForLoad();
