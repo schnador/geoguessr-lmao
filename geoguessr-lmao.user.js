@@ -75,9 +75,11 @@
   function loadUserTags() {
     return JSON.parse(localStorage.getItem(LOCALSTORAGE_USER_TAGS_KEY) || '{}');
   }
+
   function saveUserTags(userTags) {
     localStorage.setItem(LOCALSTORAGE_USER_TAGS_KEY, JSON.stringify(userTags));
   }
+
   function loadTagVisibility() {
     try {
       return (
@@ -91,9 +93,11 @@
       return { showUserTags: true, showLearnableMetaTags: true, showApiTags: false };
     }
   }
+
   function saveTagVisibility(state) {
     localStorage.setItem(LOCALSTORAGE_TAG_VISIBILITY_KEY, JSON.stringify(state));
   }
+
   function loadFilterCollapse() {
     try {
       return (
@@ -107,6 +111,7 @@
       return { user: false, api: true, meta: false };
     }
   }
+
   function saveFilterCollapse(state) {
     localStorage.setItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY, JSON.stringify(state));
   }
@@ -121,15 +126,20 @@
         paginationToken ? `${url}&paginationToken=${encodeURIComponent(paginationToken)}` : url,
         { credentials: 'include' }
       );
+
       if (!res.ok) {
         console.error('[LMAO] Failed to fetch liked maps:', res.status);
         break;
       }
+
       const data = await res.json();
       allMaps.push(...data.items);
+
       if (!data.paginationToken) break;
+
       paginationToken = data.paginationToken;
     }
+
     return allMaps;
   }
 
@@ -162,6 +172,7 @@
       label.style.marginRight = '1em';
       div.appendChild(label);
     });
+
     return div;
   }
 
@@ -215,6 +226,7 @@
   function createTagVisibilityToggles(tagVisibility, onChange) {
     const div = document.createElement('div');
     div.className = 'lmao-tag-visibility-toggles';
+
     div.appendChild(
       createCheckbox('Show user tags', tagVisibility.showUserTags, (checked) => {
         tagVisibility.showUserTags = checked;
@@ -222,6 +234,7 @@
         onChange({ ...tagVisibility });
       })
     );
+
     div.appendChild(
       createCheckbox('Show learnable meta tags', tagVisibility.showLearnableMetaTags, (checked) => {
         tagVisibility.showLearnableMetaTags = checked;
@@ -229,6 +242,7 @@
         onChange({ ...tagVisibility });
       })
     );
+
     div.appendChild(
       createCheckbox('Show default tags', tagVisibility.showApiTags, (checked) => {
         tagVisibility.showApiTags = checked;
@@ -567,9 +581,11 @@
   function findGridContainer() {
     return document.querySelector('div[class*="grid_grid__"]');
   }
+
   function findMapTeaserElements(grid) {
     return Array.from(grid.querySelectorAll('li > a[class*="map-teaser_mapTeaser__"]'));
   }
+
   function findTagsContainer(mapTeaser) {
     return mapTeaser.querySelector('div[class*="map-teaser_tagsContainer__"]');
   }
@@ -591,16 +607,19 @@
       margin-right: 0.25em;
       background: rgba(0,0,0,0.2);
     }
+
     .lmao-map-teaser_tag.api-tag {
       color: var(--ds-color-white-60);
       border-color: var(--ds-color-white-40);
       background: rgba(0,0,0,0.2);
     }
+
     .lmao-map-teaser_tag.user-tag {
       color: #fff;
       border-color: #ffb347;
       background: rgba(255,179,71,0.15);
     }
+
     .lmao-map-teaser_tag.lmao-learnable-meta {
       border-color: var(--ds-color-white-40);
       background:rgba(76, 175, 80, 0.30);
@@ -614,6 +633,7 @@
       border: none;
       padding: 0 0.2em;
     }
+
     .lmao-tag-input {
       -webkit-appearance: none;
       -moz-appearance: none;
@@ -631,6 +651,7 @@
       resize: none;
       width: auto;
     }
+
     .lmao-controls {
       margin: 0 1rem 0 0;
       display: flex;
@@ -642,9 +663,11 @@
       z-index: 1000;
       border-radius: 1rem;
     }
+
     .lmao-collapsible-tag-group {
       margin-bottom: 0.5rem;
     }
+
     .lmao-collapsible-header {
       font-size: var(--font-size-16);
       font-weight: bold;
@@ -653,35 +676,43 @@
       display: flex;
       align-items: center;
     }
+
     .lmao-collapsible-arrow {
       margin-right: 0.3em;
     }
+
     .lmao-collapsible-tags {
       display: flex;
       flex-direction: column;
     }
+
     .lmao-collapsible-tags.lmao-collapsed {
       display: none;
     }
+
     .lmao-collapsible-tag-label {
       margin: 0.2em 0;
     }
+
     .lmao-tag-visibility-toggles {
       display: flex;
       flex-direction: column;
       gap: 0.2em;
     }
+
     .lmao-controls-header {
       margin-top: 0.75rem;
       margin-bottom: 0.25rem;
       font-size: var(--font-size-18);
     }
+
     .lmao-checkbox-input {
       border: .0625rem solid #ddd;
       box-sizing: border-box;
       outline: none;
       padding: .625rem;
     }
+
     .lmao-checkbox-mark {
       background: var(--ds-color-purple-100);
       border-radius: .25rem;
@@ -829,7 +860,7 @@
     return false;
   }
 
-  // --- PAGE NAVIGATION HANDLING (MutationObserver-based) ---
+  // --- PAGE NAVIGATION HANDLING ---
   /**
    * Observe URL and DOM changes to trigger script activation on SPA navigation.
    */
@@ -855,14 +886,17 @@
     // Observe URL changes (pushState, replaceState, popstate)
     const origPushState = history.pushState;
     const origReplaceState = history.replaceState;
+
     history.pushState = function (...args) {
       origPushState.apply(this, args);
       window.dispatchEvent(new Event('locationchange'));
     };
+
     history.replaceState = function (...args) {
       origReplaceState.apply(this, args);
       window.dispatchEvent(new Event('locationchange'));
     };
+
     window.addEventListener('popstate', () => window.dispatchEvent(new Event('locationchange')));
     window.addEventListener('locationchange', () => {
       if (location.href !== lastUrl) {
