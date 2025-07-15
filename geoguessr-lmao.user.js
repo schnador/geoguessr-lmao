@@ -26,7 +26,7 @@
     let url = "https://www.geoguessr.com/api/v3/likes/maps?limit=50";
 
     while (true) {
-      const res = await fetch(paginationToken ? ${url}&paginationToken=${encodeURIComponent(paginationToken)} : url, {
+      const res = await fetch(paginationToken ? `${url}&paginationToken=${encodeURIComponent(paginationToken)}` : url, {
         credentials: "include", // ensures cookies (including _ncfa) are sent
       });
 
@@ -48,17 +48,19 @@
   function loadUserTags() {
     return JSON.parse(localStorage.getItem(LOCALSTORAGE_USER_TAGS_KEY) || "{}");
   }
+
   function saveUserTags(userTags) {
     localStorage.setItem(LOCALSTORAGE_USER_TAGS_KEY, JSON.stringify(userTags));
   }
 
   function loadTagVisibility() {
     try {
-      return JSON.parse(localStorage.getItem(LOCALSTORAGE_TAG_VISIBILITY_KEY)) || { showUserTags: true, showApiTags: true, showLearnableMetaTags: true };
+      return JSON.parse(localStorage.getItem(LOCALSTORAGE_TAG_VISIBILITY_KEY)) || { showUserTags: true, showLearnableMetaTags: true, showApiTags: false };
     } catch {
-      return { showUserTags: true, showApiTags: true, showLearnableMetaTags: true };
+      return { showUserTags: true, showLearnableMetaTags: true,showApiTags: false };
     }
   }
+
   function saveTagVisibility(state) {
     localStorage.setItem(LOCALSTORAGE_TAG_VISIBILITY_KEY, JSON.stringify(state));
   }
@@ -107,13 +109,7 @@
 
   // --- SETTINGS PERSISTENCE ---
   const TAG_VISIBILITY_KEY = "geoguessrLikedMapTagVisibility";
-  function loadTagVisibility() {
-    try {
-      return JSON.parse(localStorage.getItem(TAG_VISIBILITY_KEY)) || { showUserTags: true, showApiTags: true };
-    } catch {
-      return { showUserTags: true, showApiTags: true };
-    }
-  }
+
   function saveTagVisibility(state) {
     localStorage.setItem(TAG_VISIBILITY_KEY, JSON.stringify(state));
   }
@@ -121,14 +117,16 @@
   // --- UI CONTROLS ---
   function createTagFilterUI(userTagsList, apiTagsList, metaTagsList, selectedTags, onChange, filterCollapse, onCollapseChange) {
     const filterDiv = document.createElement("div");
-    filterDiv.style.margin = "1rem 0";
+    filterDiv.style.margin = "0.5em 0";
     filterDiv.style.display = "flex";
     filterDiv.style.flexDirection = "column";
 
-    const filtersTitle = document.createElement("strong");
-    filtersTitle.textContent = "Filters";
-    filtersTitle.style.marginBottom = "0.5rem";
-    filterDiv.appendChild(filtersTitle);
+    // User tags group
+    filterDiv.appendChild(
+      createCollapsibleTagGroup("User tags", userTagsList, selectedTags, onChange, filterCollapse.user, (collapsed) => {
+        onCollapseChange({ ...filterCollapse, user: collapsed });
+      })
+    );
 
     // Learnable Meta group
     filterDiv.appendChild(
@@ -136,12 +134,7 @@
         onCollapseChange({ ...filterCollapse, meta: collapsed });
       })
     );
-    // User tags group
-    filterDiv.appendChild(
-      createCollapsibleTagGroup("User tags", userTagsList, selectedTags, onChange, filterCollapse.user, (collapsed) => {
-        onCollapseChange({ ...filterCollapse, user: collapsed });
-      })
-    );
+
     // API tags group
     filterDiv.appendChild(
       createCollapsibleTagGroup("Default tags", apiTagsList, selectedTags, onChange, filterCollapse.api, (collapsed) => {
@@ -195,6 +188,7 @@
   function createFilterModeToggle(onToggle) {
     const div = document.createElement("div");
     div.style.margin = "0.5em 0";
+
     const labelAny = document.createElement("label");
     const radioAny = document.createElement("input");
     radioAny.type = "radio";
@@ -242,7 +236,7 @@
       onToggle(editMode);
     });
     label.appendChild(cb);
-    label.appendChild(document.createTextNode(" Edit mode"));
+    label.appendChild(document.createTextNode(" Edit tags"));
     div.appendChild(label);
     return div;
   }
@@ -250,6 +244,10 @@
   function createTagVisibilityToggles(tagVisibility, onChange) {
     const div = document.createElement("div");
     div.style.margin = "0.5rem 0";
+    div.style.display = "flex";
+    div.style.flexDirection = "column";
+    div.style.gap = "0.2em";
+
     // User tags
     const userLabel = document.createElement("label");
     userLabel.style.marginRight = "1em";
@@ -264,6 +262,21 @@
     userLabel.appendChild(userCb);
     userLabel.appendChild(document.createTextNode(" Show user tags"));
     div.appendChild(userLabel);
+
+    // Learnable meta tags
+    const learnableMetaLabel = document.createElement("label");
+    learnableMetaLabel.style.marginRight = "1em";
+    const learnableMetaCb = document.createElement("input");
+    learnableMetaCb.type = "checkbox";
+    learnableMetaCb.checked = tagVisibility.showLearnableMetaTags;
+    learnableMetaCb.addEventListener("change", () => {
+      tagVisibility.showLearnableMetaTags = learnableMetaCb.checked;
+      saveTagVisibility(tagVisibility);
+      onChange({ ...tagVisibility });
+    });
+    learnableMetaLabel.appendChild(learnableMetaCb);
+    learnableMetaLabel.appendChild(document.createTextNode(" Show learnable meta tags"));
+    div.appendChild(learnableMetaLabel);
 
     // API tags
     const apiLabel = document.createElement("label");
@@ -280,21 +293,6 @@
     apiLabel.appendChild(document.createTextNode(" Show default tags"));
     div.appendChild(apiLabel);
 
-    // Learnable meta tags
-    const learnableMetaLabel = document.createElement("label");
-    learnableMetaLabel.style.marginRight = "1em";
-    const learnableMetaCb = document.createElement("input");
-    learnableMetaCb.type = "checkbox";
-    learnableMetaCb.checked = tagVisibility.showLearnableMetaTags;
-    learnableMetaCb.addEventListener("change", () => {
-      tagVisibility.showLearnableMetaTags = learnableMetaCb.checked;
-      saveTagVisibility(tagVisibility);
-      onChange({ ...tagVisibility });
-    });
-    learnableMetaLabel.appendChild(learnableMetaCb);
-    learnableMetaLabel.appendChild(document.createTextNode(" Show learnable meta tags"));
-    div.appendChild(learnableMetaLabel);
-    div.appendChild(apiLabel);
     return div;
   }
 
@@ -310,20 +308,28 @@
     controlsDiv.style.zIndex = "1000";
     controlsDiv.style.borderRadius = "1rem 1rem 1rem 1rem";
 
-    controlsDiv.appendChild(createEditModeToggle(onEditModeToggle));
+    controlsDiv.appendChild(createHeader("Filtermode"));
     controlsDiv.appendChild(createFilterModeToggle(onFilterModeToggle));
+
+    controlsDiv.appendChild(createHeader("Filter"));
     controlsDiv.appendChild(createTagFilterUI(userTagsList, apiTagsList, metaTagsList, selectedTags, onTagFilterChange, filterCollapse, onCollapseChange));
 
     const tagVisibilityToggles = createTagVisibilityToggles(tagVisibility, onTagVisibilityChange);
-    tagVisibilityToggles.style.display = "flex";
-    tagVisibilityToggles.style.flexDirection = "column";
-    tagVisibilityToggles.style.gap = "0.2em";
 
-    const togglesTitle = document.createElement("strong");
-    togglesTitle.textContent = "Tag Visibility";
-    controlsDiv.appendChild(togglesTitle);
+    controlsDiv.appendChild(createHeader("Tag Visibility"));
     controlsDiv.appendChild(tagVisibilityToggles);
+
+    controlsDiv.appendChild(createHeader("Edit Mode"));
+    controlsDiv.appendChild(createEditModeToggle(onEditModeToggle));
+
     return controlsDiv;
+  }
+
+  function createHeader(title) {
+    const titleStrong = document.createElement("strong");
+    titleStrong.textContent = title;
+    titleStrong.style.marginTop = "0.75rem";
+    return titleStrong;
   }
 
   // --- PATCH TEASERS ---
@@ -622,11 +628,21 @@
       console.warn("[LMAO] Could not find main grid");
       return;
     }
+
+    // Use more width in container_content__
+    const container = grid.closest('div[class*="container_content__"]');
+    if (container) {
+        container.style.maxWidth = "100%";
+    } else {
+      console.warn("[LMAO] Could not find container_content__ to patch width");
+    }
+
     // Patch parent likes_map__ container to display:flex
     const likesMapDiv = grid.closest('div[class*="likes_map__"]');
     if (likesMapDiv) {
       likesMapDiv.style.display = "flex";
     }
+
     // Insert controls as a sidebar
     let controlsDiv = document.getElementById("liked-maps-folders-controls");
     if (!controlsDiv) {
@@ -710,8 +726,9 @@
   // Wait for the page content to settle
   const waitForLoad = async () => {
     console.log("[LMAO] Waiting for grid container");
-    while (!document.body || !document.querySelector("#_next") || !document.querySelector('div[class*="grid_grid_"]')) {
-      await sleep(300);
+    while (!document.body || !document.querySelector('div[class*="grid_grid_"]')) {
+        console.log(`[LMAO] Grid container not found. document.body: ${!!document.body}, grid: ${!!document.querySelector('div[class*="grid_grid_"]')}`);
+        await sleep(300);
     }
     console.log("[LMAO] Grid container found, initializing...");
     init();
