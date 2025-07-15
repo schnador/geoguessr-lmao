@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Lint userscript",
+      "type": "shell",
+      "command": "npx eslint geoguessr-lmao.user.js",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "Format userscript",
+      "type": "shell",
+      "command": "npx prettier --write geoguessr-lmao.user.js"
+    }
+  ]
+}

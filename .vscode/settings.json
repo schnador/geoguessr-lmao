@@ -1,0 +1,27 @@
+{
+  // Enable JavaScript/TypeScript features
+  "javascript.format.enable": true,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "always"
+  },
+  // Linting
+  "eslint.enable": true,
+  "eslint.validate": ["javascript"],
+  // Userscript-specific: allow browser globals
+  "javascript.suggest.globalVariables": ["window", "document", "localStorage", "fetch", "setTimeout", "setInterval"],
+  // Use 2 spaces for indentation
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  // Files
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  // Exclude node_modules and dist from search
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true
+  },
+  // Recommended extensions
+  "extensions.ignoreRecommendations": false,
+  "github.copilot.chat.reviewSelection.instructions": [{ "file": ".github/instructions/userscript.instructions.md" }]
+}
