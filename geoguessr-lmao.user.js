@@ -5,12 +5,19 @@
 // @description  Adds folder organization to liked maps on GeoGuessr
 // @author       snador
 // @match        https://www.geoguessr.com/*
-// @grant        none
+// @connect      learnablemeta.com
+// @domain       learnablemeta.com
+// @grant        GM_xmlhttpRequest
+// @grant        GM_addStyle
+// @grant        unsafeWindow
 // @run-at       document-end
 // ==/UserScript==
 
 (function () {
   'use strict';
+
+  var _GM_xmlhttpRequest = /* @__PURE__ */ (() => typeof GM_xmlhttpRequest != "undefined" ? GM_xmlhttpRequest : void 0)();
+  var _unsafeWindow = /* @__PURE__ */ (() => typeof unsafeWindow != "undefined" ? unsafeWindow : void 0)();
 
   // --- CONFIGURATION OBJECT ---
   /**
@@ -27,12 +34,23 @@
   };
 
   /**
-   * Debug logger for LMAO.
+   * Debug logger for LMAO. Uses console.trace to print the calling function name automatically.
    * @param {...any} args
    */
   function debugLog(...args) {
     if (CONFIG.features.debugMode) {
-      console.log('[LMAO Debug]', ...args);
+      // Get the calling function name from the stack
+      const stack = new Error().stack;
+      let fnName = 'unknown';
+      if (stack) {
+        const lines = stack.split('\n');
+        // The third line is usually the caller (first is Error, second is debugLog)
+        if (lines.length > 2) {
+          const match = lines[2].match(/at (\w+)/);
+          if (match) fnName = match[1];
+        }
+      }
+      console.log(`[LMAO] ${fnName}:`, ...args);
     }
   }
 
@@ -60,60 +78,159 @@
     return maps.find((m) => m.id === mapIdOrSlug || m.slug === mapIdOrSlug) || null;
   }
 
-  function isLearnableMeta(mapId) {
-    let data = localStorage.getItem(LOCALSTORAGE_GEOMETA_PREFIX + mapId);
+  /**
+   * Fetches map info from the Learnable Meta API.
+   * @param {string} url - The API endpoint URL
+   * @returns {Promise<Object>} - The map info object
+   */
+  async function fetchMapInfo(url) {
+    debugLog('fetching map info from', url);
+    return new Promise((resolve, reject) => {
+      if (typeof _GM_xmlhttpRequest !== 'function') {
+        debugLog('GM_xmlhttpRequest is not available');
+        reject('GM_xmlhttpRequest is not available, please use Version 4.0+ of Tampermonkey or Violentmonkey');
+        return;
+      }
+      _GM_xmlhttpRequest({
+        method: 'GET',
+        url,
+        onload: (response) => {
+          debugLog('onload', response.status);
+          if (response.status === 200 || response.status === 404) {
+            try {
+              const mapInfo = JSON.parse(response.responseText);
+              debugLog('fetched map info', mapInfo);
+              resolve(mapInfo);
+            } catch (e) {
+              debugLog('failed to parse map info response', e);
+              reject('Failed to parse response');
+            }
+          } else {
+            debugLog('failed to fetch map info', response);
+            reject(`HTTP error! status: ${response.status}`);
+          }
+        },
+        onerror: () => {
+          debugLog('onerror');
+          reject('An error occurred while fetching data');
+        }
+      });
+    });
+  }
+
+  /**
+   * Gets map info from localStorage or Learnable Meta API.
+   * @param {string} geoguessrId - The map ID
+   * @param {boolean} [forceUpdate=false] - Force API fetch
+   * @returns {Promise<Object>} - The map info object
+   */
+  async function getMapInfo(geoguessrId, forceUpdate = false) {
+    debugLog('called with', geoguessrId, 'forceUpdate:', forceUpdate);
+    const localStorageMapInfoKey = `${LOCALSTORAGE_GEOMETA_PREFIX}${geoguessrId}`;
+    if (!forceUpdate) {
+      const savedMapInfo = _unsafeWindow.localStorage.getItem(localStorageMapInfoKey);
+      if (savedMapInfo) {
+        const mapInfo2 = JSON.parse(savedMapInfo);
+        debugLog('using saved map info', mapInfo2);
+        return mapInfo2;
+      }
+    }
+    const url = `https://learnablemeta.com/api/userscript/map/${geoguessrId}`;
+    const mapInfo = await fetchMapInfo(url);
+    debugLog('Fetched map info:', mapInfo);
+    _unsafeWindow.localStorage.setItem(localStorageMapInfoKey, JSON.stringify(mapInfo));
+    return mapInfo;
+  }
+
+  /**
+   * Fetches and caches Learnable Meta status for a map during initialization.
+   * @param {string} mapId - The map ID
+   * @returns {Promise<boolean>} - True if Learnable Meta, else false
+   */
+  async function fetchAndCacheLearnableMeta(mapId) {
+    debugLog('called with', mapId);
+    try {
+      const mapInfo = await getMapInfo(mapId);
+      debugLog('got mapInfo', mapInfo);
+      return mapInfo && mapInfo.mapFound === true;
+    } catch (err) {
+      debugLog('error', err);
+      return false;
+    }
+  }
+
+  /**
+   * Synchronously checks if a map is Learnable Meta using local cache or localStorage.
+   * @param {string} mapId - The map ID
+   * @param {Set<string>} [learnableMetaCache] - Optional cache set
+   * @returns {boolean}
+   */
+  function isLearnableMetaFromCacheOrLocalStorage(mapId, learnableMetaCache) {
+    debugLog('called with', mapId);
+    if (learnableMetaCache && learnableMetaCache.has(mapId)) return true;
+    const data = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_GEOMETA_PREFIX + mapId);
     if (!data) return false;
     try {
       const obj = JSON.parse(data);
+      debugLog('parsed object', obj);
       return obj && obj.mapFound === true;
-    } catch {
+    } catch (err) {
+      debugLog('error parsing', err);
       return false;
     }
   }
 
   // --- LOCALSTORAGE STATE ---
   function loadUserTags() {
-    return JSON.parse(localStorage.getItem(LOCALSTORAGE_USER_TAGS_KEY) || '{}');
+    debugLog();
+    return JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_USER_TAGS_KEY) || '{}');
   }
 
   function saveUserTags(userTags) {
-    localStorage.setItem(LOCALSTORAGE_USER_TAGS_KEY, JSON.stringify(userTags));
+    debugLog(userTags);
+    _unsafeWindow.localStorage.setItem(LOCALSTORAGE_USER_TAGS_KEY, JSON.stringify(userTags));
   }
 
   function loadTagVisibility() {
+    debugLog();
     try {
       return (
-        JSON.parse(localStorage.getItem(LOCALSTORAGE_TAG_VISIBILITY_KEY)) || {
+        JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_TAG_VISIBILITY_KEY)) || {
           showUserTags: true,
           showLearnableMetaTags: true,
           showApiTags: false
         }
       );
-    } catch {
+    } catch (err) {
+      debugLog('error', err);
       return { showUserTags: true, showLearnableMetaTags: true, showApiTags: false };
     }
   }
 
   function saveTagVisibility(state) {
-    localStorage.setItem(LOCALSTORAGE_TAG_VISIBILITY_KEY, JSON.stringify(state));
+    debugLog(state);
+    _unsafeWindow.localStorage.setItem(LOCALSTORAGE_TAG_VISIBILITY_KEY, JSON.stringify(state));
   }
 
   function loadFilterCollapse() {
+    debugLog();
     try {
       return (
-        JSON.parse(localStorage.getItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY)) || {
+        JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY)) || {
           user: false,
           api: true,
           meta: false
         }
       );
-    } catch {
+    } catch (err) {
+      debugLog('error', err);
       return { user: false, api: true, meta: false };
     }
   }
 
   function saveFilterCollapse(state) {
-    localStorage.setItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY, JSON.stringify(state));
+    debugLog(state);
+    _unsafeWindow.localStorage.setItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY, JSON.stringify(state));
   }
 
   // --- API ---
@@ -340,7 +457,8 @@
     onTagAdd,
     onTagRemove,
     filterMode,
-    editMode
+    editMode,
+    learnableMetaCache
   ) {
     injectStaticTagStyle();
     const grid = findGridContainer();
@@ -354,7 +472,7 @@
       const mapKey = getMapKey(map);
       // Compute all tags (user, api, meta)
       const allTags = [...new Set([...(map.tags || []), ...(userTags[mapKey] || [])])];
-      if (isLearnableMeta(mapKey) && !allTags.includes('Learnable Meta'))
+      if (isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache) && !allTags.includes('Learnable Meta'))
         allTags.push('Learnable Meta');
       if (map.isUserMap === false) allTags.push('Official');
 
@@ -477,7 +595,7 @@
             rmBtn.onclick = (e) => {
               e.preventDefault();
               e.stopPropagation();
-              debugLog('[LMAO] Removing tag', tag, 'from map', map.id);
+              debugLog('patchTeasersWithControls', 'Removing tag', tag, 'from map', map.id);
               onTagRemove(map, tag);
             };
             tagDiv.appendChild(rmBtn);
@@ -487,7 +605,7 @@
       }
 
       // Add Learnable Meta tag if present
-      if (tagVisibility.showLearnableMetaTags && isLearnableMeta(mapKey)) {
+      if (tagVisibility.showLearnableMetaTags && isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache)) {
         const tagDiv = document.createElement('span');
         tagDiv.className = USER_TAG_CLASS + ' lmao-learnable-meta';
         tagDiv.textContent = 'Learnable Meta';
@@ -588,6 +706,10 @@
 
   function findTagsContainer(mapTeaser) {
     return mapTeaser.querySelector('div[class*="map-teaser_tagsContainer__"]');
+  }
+
+  function findLikesMapDiv() {
+    return document.querySelector('div[class*="likes_map__"]');
   }
 
   // --- CSS ---
@@ -725,125 +847,183 @@
     document.head.appendChild(style);
   }
 
+  function injectLoadingIndicatorStyle() {
+    if (document.getElementById('lmao-loading-indicator-style')) return;
+    const style = document.createElement('style');
+    style.id = 'lmao-loading-indicator-style';
+    style.textContent = `
+    .lmao-loading-indicator {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2em;
+      width: 100%;
+    }
+    .lmao-loading-indicator-text {
+      font-size: 1.25em;
+    }
+  `;
+    document.head.appendChild(style);
+  }
+
+  /**
+   * Shows a loading indicator in the likes container.
+   */
+  function showLoadingIndicator() {
+    injectLoadingIndicatorStyle();
+    const container = findLikesMapDiv();
+    if (!container) return;
+    let loader = document.getElementById('lmao-loading-indicator');
+    if (!loader) {
+      loader = document.createElement('div');
+      loader.id = 'lmao-loading-indicator';
+      loader.className = 'lmao-loading-indicator';
+      loader.innerHTML = `<span class="lmao-loading-indicator-text">⏳ Checking for learnable meta maps...</span>`;
+      container.parentNode.insertBefore(loader, container);
+    }
+  }
+
+  /**
+   * Removes the loading indicator from the likes container.
+   */
+  function removeLoadingIndicator() {
+    const loader = document.getElementById('lmao-loading-indicator');
+    if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+  }
+
   // --- MAIN ---
   async function init() {
-    const userTags = loadUserTags();
-    const maps = await fetchAllLikedMaps();
-    // Group tags for filter UI
-    const userTagsSet = new Set();
-    const apiTagsSet = new Set();
-    const metaTagsSet = new Set();
+    showLoadingIndicator();
+    try {
+      const userTags = loadUserTags();
+      const maps = await fetchAllLikedMaps();
+      // Group tags for filter UI
+      const userTagsSet = new Set();
+      const apiTagsSet = new Set();
+      const metaTagsSet = new Set();
+      const learnableMetaCache = new Set();
 
-    maps.forEach((map) => {
-      (userTags[getMapKey(map)] || []).forEach((t) => userTagsSet.add(t));
-      (map.tags || []).forEach((t) => apiTagsSet.add(t));
-      if (isLearnableMeta(getMapKey(map))) metaTagsSet.add('Learnable Meta');
-      if (map.isUserMap === false) apiTagsSet.add('Official');
-    });
+      // Await fetchAndCacheLearnableMeta only during init, then cache result in learnableMetaCache
+      for (const map of maps) {
+        (userTags[getMapKey(map)] || []).forEach((t) => userTagsSet.add(t));
+        (map.tags || []).forEach((t) => apiTagsSet.add(t));
+        if (await fetchAndCacheLearnableMeta(getMapKey(map))) {
+          metaTagsSet.add('Learnable Meta');
+          learnableMetaCache.add(getMapKey(map));
+        }
+        if (map.isUserMap === false) apiTagsSet.add('Official');
+      }
 
-    let userTagsList = Array.from(userTagsSet).sort();
-    const apiTagsList = Array.from(apiTagsSet).sort();
-    const metaTagsList = metaTagsSet.has('Learnable Meta') ? ['Learnable Meta'] : [];
-    let selectedTags = [];
-    let currentUserTags = { ...userTags };
-    let tagVisibility = loadTagVisibility();
-    let filterCollapse = loadFilterCollapse();
-    let filterMode = 'ANY';
-    let editMode = false;
-    const grid = findGridContainer();
-    if (!grid) return;
+      let userTagsList = Array.from(userTagsSet).sort();
+      const apiTagsList = Array.from(apiTagsSet).sort();
+      const metaTagsList = metaTagsSet.has('Learnable Meta') ? ['Learnable Meta'] : [];
+      let selectedTags = [];
+      let currentUserTags = { ...userTags };
+      let tagVisibility = loadTagVisibility();
+      let filterCollapse = loadFilterCollapse();
+      let filterMode = 'ANY';
+      let editMode = false;
+      const grid = findGridContainer();
+      if (!grid) return;
 
-    const container = grid.closest('div[class*="container_content__"]');
-    if (container) container.style.maxWidth = '100%';
+      const container = grid.closest('div[class*="container_content__"]');
+      if (container) container.style.maxWidth = '100%';
 
-    const likesMapDiv = grid.closest('div[class*="likes_map__"]');
-    if (likesMapDiv) { likesMapDiv.style.display = 'flex'; likesMapDiv.marginTop = '1rem'; }
+      const likesMapDiv = grid.closest('div[class*="likes_map__"]');
+      if (likesMapDiv) { likesMapDiv.style.display = 'flex'; likesMapDiv.marginTop = '1rem'; }
 
-    let controlsDiv = document.getElementById('liked-maps-folders-controls');
+      let controlsDiv = document.getElementById('liked-maps-folders-controls');
 
-    function rerender() {
-      patchTeasersWithControls(
-        maps,
-        currentUserTags,
-        selectedTags,
-        tagVisibility,
-        userTagsList,
-        onTagAdd,
-        onTagRemove,
-        filterMode,
-        editMode
-      );
-    }
+      function rerender() {
+        patchTeasersWithControls(
+          maps,
+          currentUserTags,
+          selectedTags,
+          tagVisibility,
+          userTagsList,
+          onTagAdd,
+          onTagRemove,
+          filterMode,
+          editMode,
+          learnableMetaCache // pass cache to patchTeasersWithControls
+        );
+      }
 
-    function onTagFilterChange(newTags) {
-      selectedTags = newTags;
+      function onTagFilterChange(newTags) {
+        selectedTags = newTags;
+        rerender();
+      }
+
+      function onEditModeToggle(newEditMode) {
+        editMode = newEditMode;
+        rerender();
+      }
+
+      function onTagVisibilityChange(newVisibility) {
+        tagVisibility = newVisibility;
+        rerender();
+      }
+
+      function onFilterModeToggle(newMode) {
+        filterMode = newMode;
+        rerender();
+      }
+
+      function onCollapseChange(newCollapse) {
+        filterCollapse = newCollapse;
+        saveFilterCollapse(filterCollapse);
+        rebuildControls();
+      }
+
+      function onTagAdd(map, tag) {
+        const key = getMapKey(map);
+        currentUserTags[key] = currentUserTags[key] || [];
+        currentUserTags[key].push(tag);
+        saveUserTags(currentUserTags);
+        userTagsList = Array.from(new Set(Object.values(currentUserTags).flat())).sort();
+        rebuildControls();
+        rerender();
+      }
+
+      function onTagRemove(map, tag) {
+        const key = getMapKey(map);
+        currentUserTags[key] = (currentUserTags[key] || []).filter((t) => t !== tag);
+        saveUserTags(currentUserTags);
+        userTagsList = Array.from(new Set(Object.values(currentUserTags).flat())).sort();
+        rebuildControls();
+        rerender();
+      }
+
+      function rebuildControls() {
+        const newControls = createControlsUI(
+          userTagsList,
+          apiTagsList,
+          metaTagsList,
+          selectedTags,
+          onTagFilterChange,
+          onEditModeToggle,
+          tagVisibility,
+          onTagVisibilityChange,
+          onFilterModeToggle,
+          filterCollapse,
+          onCollapseChange,
+          filterMode,
+          editMode
+        );
+        newControls.id = 'liked-maps-folders-controls';
+        if (controlsDiv) controlsDiv.replaceWith(newControls);
+        else grid.parentNode.insertBefore(newControls, grid);
+        controlsDiv = newControls;
+      }
+      if (!controlsDiv) rebuildControls();
+      grid.style.flexGrow = '1';
       rerender();
-    }
 
-    function onEditModeToggle(newEditMode) {
-      editMode = newEditMode;
-      rerender();
+      console.log('[LMAO] Initialization complete.');
+    } finally {
+      removeLoadingIndicator();
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
-
-    function onTagVisibilityChange(newVisibility) {
-      tagVisibility = newVisibility;
-      rerender();
-    }
-
-    function onFilterModeToggle(newMode) {
-      filterMode = newMode;
-      rerender();
-    }
-
-    function onCollapseChange(newCollapse) {
-      filterCollapse = newCollapse;
-      saveFilterCollapse(filterCollapse);
-      rebuildControls();
-    }
-
-    function onTagAdd(map, tag) {
-      const key = getMapKey(map);
-      currentUserTags[key] = currentUserTags[key] || [];
-      currentUserTags[key].push(tag);
-      saveUserTags(currentUserTags);
-      userTagsList = Array.from(new Set(Object.values(currentUserTags).flat())).sort();
-      rebuildControls();
-      rerender();
-    }
-
-    function onTagRemove(map, tag) {
-      const key = getMapKey(map);
-      currentUserTags[key] = (currentUserTags[key] || []).filter((t) => t !== tag);
-      saveUserTags(currentUserTags);
-      userTagsList = Array.from(new Set(Object.values(currentUserTags).flat())).sort();
-      rebuildControls();
-      rerender();
-    }
-
-    function rebuildControls() {
-      const newControls = createControlsUI(
-        userTagsList,
-        apiTagsList,
-        metaTagsList,
-        selectedTags,
-        onTagFilterChange,
-        onEditModeToggle,
-        tagVisibility,
-        onTagVisibilityChange,
-        onFilterModeToggle,
-        filterCollapse,
-        onCollapseChange,
-        filterMode,
-        editMode
-      );
-      newControls.id = 'liked-maps-folders-controls';
-      if (controlsDiv) controlsDiv.replaceWith(newControls);
-      else grid.parentNode.insertBefore(newControls, grid);
-      controlsDiv = newControls;
-    }
-    if (!controlsDiv) rebuildControls();
-    grid.style.flexGrow = '1';
-    rerender();
   }
 
   /**
