@@ -784,6 +784,12 @@
       padding: 1em;
       z-index: 1000;
       border-radius: 1rem;
+      height: min-content;
+      position: sticky;
+      top: 50%;
+      transform: translateY(-50%);
+      max-height: calc(100vh - 2em);
+      overflow-y: auto;
     }
 
     .lmao-collapsible-tag-group {
