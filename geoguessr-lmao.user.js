@@ -1,12 +1,15 @@
 // ==UserScript==
 // @name         GeoGuessr Liked Maps Advanced Overhaul (LMAO)
-// @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Adds folder organization to liked maps on GeoGuessr
+// @namespace    https://github.com/schnador/
+// @version      1.0.0
+// @description  Adds organization to liked maps on GeoGuessr. Add tags and filter them. Integrates with Learnable Meta!
 // @author       snador
+// @license      Unlicense
+// @icon         https://github.com/schnador/geoguessr-lmao/raw/img/lmao_icon.png
+// @downloadURL  https://github.com/schnador/geoguessr-lmao/raw/refs/heads/main/geoguessr-lmao.user.js
+// @updateURL    https://github.com/schnador/geoguessr-lmao/raw/refs/heads/main/geoguessr-lmao.user.js
 // @match        https://www.geoguessr.com/*
 // @connect      learnablemeta.com
-// @domain       learnablemeta.com
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
 // @grant        unsafeWindow
@@ -76,6 +79,9 @@
       padding: 0.75rem 0.75rem;
       resize: none;
       width: auto;
+      max-height: 25px;
+      display: block;
+      margin-top: 0.25em;
     }
     .lmao-controls {
       margin: 0 1rem 0 0;
@@ -228,10 +234,10 @@
    * @returns {Promise<Object>} - The map info object
    */
   async function fetchMapInfo(url) {
-    debugLog('fetching map info from', url);
+    debugLog('fetching map info from API with URL', url);
     return new Promise((resolve, reject) => {
       if (typeof _GM_xmlhttpRequest !== 'function') {
-        debugLog('GM_xmlhttpRequest is not available');
+        console.error('GM_xmlhttpRequest is not available');
         reject('GM_xmlhttpRequest is not available, please use Version 4.0+ of Tampermonkey or Violentmonkey');
         return;
       }
@@ -239,23 +245,23 @@
         method: 'GET',
         url,
         onload: (response) => {
-          debugLog('onload', response.status);
+          debugLog('onload', url, response.status);
           if (response.status === 200 || response.status === 404) {
             try {
               const mapInfo = JSON.parse(response.responseText);
               debugLog('fetched map info', mapInfo);
               resolve(mapInfo);
             } catch (e) {
-              debugLog('failed to parse map info response', e);
+              console.error('failed to parse map info response', e);
               reject('Failed to parse response');
             }
           } else {
-            debugLog('failed to fetch map info', response);
+            console.error('failed to fetch map info', response);
             reject(`HTTP error! status: ${response.status}`);
           }
         },
         onerror: () => {
-          debugLog('onerror');
+          console.error('onerror');
           reject('An error occurred while fetching data');
         }
       });
@@ -292,7 +298,6 @@
    * @returns {Promise<boolean>} - True if Learnable Meta, else false
    */
   async function fetchAndCacheLearnableMeta(mapId) {
-    debugLog('called with', mapId);
     try {
       const mapInfo = await getMapInfo(mapId);
       debugLog('got mapInfo', mapInfo);
@@ -310,23 +315,21 @@
    * @returns {boolean}
    */
   function isLearnableMetaFromCacheOrLocalStorage(mapId, learnableMetaCache) {
-    debugLog('called with', mapId);
     if (learnableMetaCache && learnableMetaCache.has(mapId)) return true;
     const data = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_GEOMETA_PREFIX + mapId);
     if (!data) return false;
     try {
       const obj = JSON.parse(data);
-      debugLog('parsed object', obj);
+      debugLog('loaded from localstorage', obj);
       return obj && obj.mapFound === true;
     } catch (err) {
-      debugLog('error parsing', err);
+      console.error('error parsing', err);
       return false;
     }
   }
 
   // --- LOCALSTORAGE STATE ---
   function loadUserTags() {
-    debugLog();
     return JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_USER_TAGS_KEY) || '{}');
   }
 
@@ -336,7 +339,6 @@
   }
 
   function loadTagVisibility() {
-    debugLog();
     try {
       return (
         JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_TAG_VISIBILITY_KEY)) || {
@@ -357,7 +359,6 @@
   }
 
   function loadFilterCollapse() {
-    debugLog();
     try {
       return (
         JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY)) || {
@@ -1021,10 +1022,11 @@
   function isActivePage() {
     const { pathname, search } = window.location;
     if (pathname === '/me/likes') return true;
-    if (pathname === '/maps/community') {
-      const params = new URLSearchParams(search);
-      return params.get('tab') === 'liked-maps';
-    }
+    // disabled for now - would need handle the different class names to make it work.
+    // if (pathname === '/maps/community') {
+    //   const params = new URLSearchParams(search);
+    //   return params.get('tab') === 'liked-maps';
+    // }
     return false;
   }
 
