@@ -16,6 +16,150 @@
 (function () {
   'use strict';
 
+  // --- STYLE INJECTION ---
+  (css => {
+    if (typeof GM_addStyle === 'function') {
+      GM_addStyle(css);
+    } else {
+      const style = document.createElement('style');
+      style.textContent = css;
+      document.head.appendChild(style);
+    }
+  })(`
+    .lmao-map-teaser_tag {
+      border: .0625rem solid var(--ds-color-white-40);
+      border-radius: .3125rem;
+      font-size: .8125rem;
+      font-style: italic;
+      line-height: .875rem;
+      padding: .125rem .5rem .25rem;
+      text-transform: capitalize;
+      margin-right: 0.25em;
+      background: rgba(0,0,0,0.2);
+    }
+    .lmao-map-teaser_tag.api-tag {
+      color: var(--ds-color-white-60);
+      border-color: var(--ds-color-white-40);
+      background: rgba(0,0,0,0.2);
+    }
+    .lmao-map-teaser_tag.user-tag {
+      color: #fff;
+      border-color: #ffb347;
+      background: rgba(255,179,71,0.15);
+    }
+    .lmao-map-teaser_tag.lmao-learnable-meta {
+      border-color: var(--ds-color-white-40);
+      background:rgba(76, 175, 80, 0.30);
+    }
+    .lmao-tag-remove-btn {
+      margin-left: 0.2em;
+      font-size: 1em;
+      color: #ffffff;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      padding: 0 0.2em;
+    }
+    .lmao-tag-input {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background: 0.75rem;
+      border: 0;
+      border-radius: .5rem;
+      box-shadow: inset 0 0 0.0625rem 0 hsla(0, 0%, 100%, .9);
+      box-sizing: border-box;
+      color: #fff;
+      font-family: var(--default-font);
+      font-size: 0.875rem;
+      outline: none;
+      padding: 0.75rem 0.75rem;
+      resize: none;
+      width: auto;
+    }
+    .lmao-controls {
+      margin: 0 1rem 0 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      min-width: 220px;
+      background: rgb(16 16 28/80%);
+      padding: 1em;
+      z-index: 1000;
+      border-radius: 1rem;
+      height: min-content;
+      position: sticky;
+      top: 50%;
+      transform: translateY(-50%);
+      max-height: calc(100vh - 2em);
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+    .lmao-controls.lmao-controls-sticky {
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .lmao-collapsible-tag-group {
+      margin-bottom: 0.5rem;
+    }
+    .lmao-collapsible-header {
+      font-size: var(--font-size-16);
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+    }
+    .lmao-collapsible-arrow {
+      margin-right: 0.3em;
+    }
+    .lmao-collapsible-tags {
+      display: flex;
+      flex-direction: column;
+    }
+    .lmao-collapsible-tags.lmao-collapsed {
+      display: none;
+    }
+    .lmao-collapsible-tag-label {
+      margin: 0.2em 0;
+    }
+    .lmao-tag-visibility-toggles {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2em;
+    }
+    .lmao-controls-header {
+      margin-top: 0.75rem;
+      margin-bottom: 0.25rem;
+      font-size: var(--font-size-18);
+    }
+    .lmao-checkbox-input {
+      border: .0625rem solid #ddd;
+      box-sizing: border-box;
+      outline: none;
+      padding: .625rem;
+    }
+    .lmao-checkbox-mark {
+      background: var(--ds-color-purple-100);
+      border-radius: .25rem;
+      box-shadow: var(--shadow-1);
+      left: 0;
+      top: 0;
+      border: .0625rem solid var(--ds-color-white-20);
+    }
+    .lmao-loading-indicator {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2em;
+      width: 100%;
+    }
+    .lmao-loading-indicator-text {
+      font-size: 1.25em;
+    }
+  `);
+
   var _GM_xmlhttpRequest = /* @__PURE__ */ (() => typeof GM_xmlhttpRequest != "undefined" ? GM_xmlhttpRequest : void 0)();
   var _unsafeWindow = /* @__PURE__ */ (() => typeof unsafeWindow != "undefined" ? unsafeWindow : void 0)();
 
@@ -460,7 +604,6 @@
     editMode,
     learnableMetaCache
   ) {
-    injectStaticTagStyle();
     const grid = findGridContainer();
     if (!grid) return;
     const teasers = findMapTeaserElements(grid);
@@ -712,171 +855,10 @@
     return document.querySelector('div[class*="likes_map__"]');
   }
 
-  // --- CSS ---
-  function injectStaticTagStyle() {
-    if (document.getElementById('liked-maps-tag-style')) return;
-    const style = document.createElement('style');
-    style.id = 'liked-maps-tag-style';
-    style.textContent = `
-    .lmao-map-teaser_tag {
-      border: .0625rem solid var(--ds-color-white-40);
-      border-radius: .3125rem;
-      font-size: .8125rem;
-      font-style: italic;
-      line-height: .875rem;
-      padding: .125rem .5rem .25rem;
-      text-transform: capitalize;
-      margin-right: 0.25em;
-      background: rgba(0,0,0,0.2);
-    }
-
-    .lmao-map-teaser_tag.api-tag {
-      color: var(--ds-color-white-60);
-      border-color: var(--ds-color-white-40);
-      background: rgba(0,0,0,0.2);
-    }
-
-    .lmao-map-teaser_tag.user-tag {
-      color: #fff;
-      border-color: #ffb347;
-      background: rgba(255,179,71,0.15);
-    }
-
-    .lmao-map-teaser_tag.lmao-learnable-meta {
-      border-color: var(--ds-color-white-40);
-      background:rgba(76, 175, 80, 0.30);
-    }
-    .lmao-tag-remove-btn {
-      margin-left: 0.2em;
-      font-size: 1em;
-      color: #ffffff;
-      cursor: pointer;
-      background: transparent;
-      border: none;
-      padding: 0 0.2em;
-    }
-
-    .lmao-tag-input {
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-      background: 0.75rem;
-      border: 0;
-      border-radius: .5rem;
-      box-shadow: inset 0 0 0.0625rem 0 hsla(0, 0%, 100%, .9);
-      box-sizing: border-box;
-      color: #fff;
-      font-family: var(--default-font);
-      font-size: 0.875rem;
-      outline: none;
-      padding: 0.75rem 0.75rem;
-      resize: none;
-      width: auto;
-    }
-
-    .lmao-controls {
-      margin: 0 1rem 0 0;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      min-width: 220px;
-      background: rgb(16 16 28/80%);
-      padding: 1em;
-      z-index: 1000;
-      border-radius: 1rem;
-      height: min-content;
-      position: sticky;
-      top: 50%;
-      transform: translateY(-50%);
-      max-height: calc(100vh - 2em);
-      overflow-y: auto;
-    }
-
-    .lmao-collapsible-tag-group {
-      margin-bottom: 0.5rem;
-    }
-
-    .lmao-collapsible-header {
-      font-size: var(--font-size-16);
-      font-weight: bold;
-      cursor: pointer;
-      user-select: none;
-      display: flex;
-      align-items: center;
-    }
-
-    .lmao-collapsible-arrow {
-      margin-right: 0.3em;
-    }
-
-    .lmao-collapsible-tags {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .lmao-collapsible-tags.lmao-collapsed {
-      display: none;
-    }
-
-    .lmao-collapsible-tag-label {
-      margin: 0.2em 0;
-    }
-
-    .lmao-tag-visibility-toggles {
-      display: flex;
-      flex-direction: column;
-      gap: 0.2em;
-    }
-
-    .lmao-controls-header {
-      margin-top: 0.75rem;
-      margin-bottom: 0.25rem;
-      font-size: var(--font-size-18);
-    }
-
-    .lmao-checkbox-input {
-      border: .0625rem solid #ddd;
-      box-sizing: border-box;
-      outline: none;
-      padding: .625rem;
-    }
-
-    .lmao-checkbox-mark {
-      background: var(--ds-color-purple-100);
-      border-radius: .25rem;
-      box-shadow: var(--shadow-1);
-      left: 0;
-      top: 0;
-      border: .0625rem solid var(--ds-color-white-20);
-    }
-  `;
-    document.head.appendChild(style);
-  }
-
-  function injectLoadingIndicatorStyle() {
-    if (document.getElementById('lmao-loading-indicator-style')) return;
-    const style = document.createElement('style');
-    style.id = 'lmao-loading-indicator-style';
-    style.textContent = `
-    .lmao-loading-indicator {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 2em;
-      width: 100%;
-    }
-    .lmao-loading-indicator-text {
-      font-size: 1.25em;
-    }
-  `;
-    document.head.appendChild(style);
-  }
-
   /**
    * Shows a loading indicator in the likes container.
    */
   function showLoadingIndicator() {
-    injectLoadingIndicatorStyle();
     const container = findLikesMapDiv();
     if (!container) return;
     let loader = document.getElementById('lmao-loading-indicator');
