@@ -29,6 +29,14 @@
       document.head.appendChild(style);
     }
   })(`
+    .lmao-full-width-container {
+      width: 100%;
+      min-width: 100%;
+      margin: 0;
+    }
+    .lmao-likes-container {
+      margin-left: 18rem;
+    }
     .lmao-map-teaser_tag {
       border: .0625rem solid var(--ds-color-white-40);
       border-radius: .3125rem;
@@ -84,27 +92,23 @@
       margin-top: 0.25em;
     }
     .lmao-controls {
-      margin: 0 1rem 0 0;
+      margin-left: 1rem;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      min-width: 220px;
+      width: 15rem;
       background: rgb(16 16 28/80%);
       padding: 1em;
       z-index: 1000;
       border-radius: 1rem;
       height: min-content;
-      position: sticky;
+      position: fixed;
       top: 50%;
       transform: translateY(-50%);
       max-height: calc(100vh - 2em);
       overflow-y: auto;
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
-    }
-    .lmao-controls.lmao-controls-sticky {
-      top: 50%;
-      transform: translateY(-50%);
     }
     .lmao-collapsible-tag-group {
       margin-bottom: 0.5rem;
@@ -216,7 +220,6 @@
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   function getMapKey(map) {
-    // Always use the map's id (UUID or slug) as the key for user tags
     return map.id;
   }
 
@@ -856,6 +859,10 @@
     return document.querySelector('div[class*="likes_map__"]');
   }
 
+  function findFullHeightContainer() {
+    return document.querySelector('main');
+  }
+
   /**
    * Shows a loading indicator in the likes container.
    */
@@ -916,10 +923,15 @@
       if (!grid) return;
 
       const container = grid.closest('div[class*="container_content__"]');
-      if (container) container.style.maxWidth = '100%';
+      if (container && !container.className.includes('lmao-full-width-container')) container.classList.add('lmao-full-width-container');
 
       const likesMapDiv = grid.closest('div[class*="likes_map__"]');
       if (likesMapDiv) { likesMapDiv.style.display = 'flex'; likesMapDiv.marginTop = '1rem'; }
+
+      const likesMapContainer = likesMapDiv.parentElement;
+      if (likesMapContainer && !likesMapContainer.className.includes('lmao-likes-container')) {
+        likesMapContainer.classList.add('lmao-likes-container');
+      }
 
       let controlsDiv = document.getElementById('liked-maps-folders-controls');
 
@@ -934,7 +946,7 @@
           onTagRemove,
           filterMode,
           editMode,
-          learnableMetaCache // pass cache to patchTeasersWithControls
+          learnableMetaCache
         );
       }
 
@@ -999,9 +1011,16 @@
           filterMode,
           editMode
         );
+
+        const fullHeightContainer = findFullHeightContainer();
+        if (!fullHeightContainer) {
+          console.log('[LMAO] Full height container not found');
+          return;
+        }
+
         newControls.id = 'liked-maps-folders-controls';
         if (controlsDiv) controlsDiv.replaceWith(newControls);
-        else grid.parentNode.insertBefore(newControls, grid);
+        else fullHeightContainer.appendChild(newControls);
         controlsDiv = newControls;
       }
       if (!controlsDiv) rebuildControls();
