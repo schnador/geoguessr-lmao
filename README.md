@@ -3,6 +3,7 @@
 A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr](https://www.geoguessr.com/). Add custom tags, filter maps, with instant Learnable Meta integration.
 
 [GITHUB LINK](https://github.com/schnador/geoguessr-lmao)
+[GREASYFORK](https://greasyfork.org/en/scripts/543001-geoguessr-liked-maps-advanced-overhaul-lmao)
 
 ---
 
@@ -30,7 +31,7 @@ Filtered:
    - [Violentmonkey](https://violentmonkey.github.io/)
 2. (if you use chrome/edge/chromium based browser) [Enable developer mode](https://www.tampermonkey.net/faq.php?locale=en#Q209) for Chrome extensions
 3. **Install the script:**
-   - [Click here to install LMAO](https://github.com/schnador/geoguessr-lmao/raw/refs/heads/main/geoguessr-lmao.user.js)
+   - [Install via GreasyFork](https://greasyfork.org/en/scripts/543001-geoguessr-liked-maps-advanced-overhaul-lmao)
 
 ---
 
