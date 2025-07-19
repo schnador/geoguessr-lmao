@@ -90,6 +90,8 @@
       max-height: 25px;
       display: block;
       margin-top: 0.25em;
+      flex-basis: 100%;
+      margin-right: 2rem;
     }
     .lmao-controls {
       margin-left: 1rem;
@@ -168,6 +170,9 @@
     }
     .lmao-loading-indicator-text {
       font-size: 1.25em;
+    }
+    .map-teaser_mapTitleAndTags__iiqiz {
+      padding-right: 0.125rem;
     }
   `);
 
