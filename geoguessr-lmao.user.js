@@ -184,13 +184,12 @@
    * Central configuration for LMAO userscript.
    */
   const CONFIG = {
-    version: '1.0.0',
+    version: GM_info.script.version ? GM_info.script.version : '1.0.0-unknown',
     features: {
-      enhancedUI: true,
-      debugMode: true
+      debugMode: false
     },
-    validPaths: ['/me/likes', '/maps/community'],
-    validTabs: [undefined, 'liked-maps']
+    // validPaths: ['/me/likes', '/maps/community'],
+    // validTabs: [undefined, 'liked-maps']
   };
 
   /**
