@@ -5,7 +5,7 @@
 // @description  Adds organization to liked maps on GeoGuessr. Add tags and filter them. Integrates with Learnable Meta!
 // @author       snador
 // @license      Unlicense
-// @icon         https://github.com/schnador/geoguessr-lmao/raw/img/lmao_icon.png
+// @icon         https://github.com/schnador/geoguessr-lmao/blob/main/img/lmao_icon.png?raw=true
 // @downloadURL  https://github.com/schnador/geoguessr-lmao/raw/refs/heads/main/geoguessr-lmao.user.js
 // @updateURL    https://github.com/schnador/geoguessr-lmao/raw/refs/heads/main/geoguessr-lmao.user.js
 // @match        https://www.geoguessr.com/*
@@ -45,8 +45,8 @@
       line-height: .875rem;
       padding: .125rem .5rem .25rem;
       text-transform: capitalize;
-      margin-right: 0.25em;
       background: rgba(0,0,0,0.2);
+      max-height: 25px;
     }
     .lmao-map-teaser_tag.api-tag {
       color: var(--ds-color-white-60);
@@ -127,6 +127,7 @@
     .lmao-collapsible-tags {
       display: flex;
       flex-direction: column;
+      margin-left: 0.25rem;
     }
     .lmao-collapsible-tags.lmao-collapsed {
       display: none;
@@ -278,19 +279,17 @@
    * @returns {Promise<Object>} - The map info object
    */
   async function getMapInfo(geoguessrId, forceUpdate = false) {
-    debugLog('called with', geoguessrId, 'forceUpdate:', forceUpdate);
     const localStorageMapInfoKey = `${LOCALSTORAGE_GEOMETA_PREFIX}${geoguessrId}`;
     if (!forceUpdate) {
       const savedMapInfo = _unsafeWindow.localStorage.getItem(localStorageMapInfoKey);
       if (savedMapInfo) {
         const mapInfo2 = JSON.parse(savedMapInfo);
-        debugLog('using saved map info', mapInfo2);
+        debugLog('loaded from localStorage', mapInfo2);
         return mapInfo2;
       }
     }
     const url = `https://learnablemeta.com/api/userscript/map/${geoguessrId}`;
     const mapInfo = await fetchMapInfo(url);
-    debugLog('Fetched map info:', mapInfo);
     _unsafeWindow.localStorage.setItem(localStorageMapInfoKey, JSON.stringify(mapInfo));
     return mapInfo;
   }
@@ -303,7 +302,6 @@
   async function fetchAndCacheLearnableMeta(mapId) {
     try {
       const mapInfo = await getMapInfo(mapId);
-      debugLog('got mapInfo', mapInfo);
       return mapInfo && mapInfo.mapFound === true;
     } catch (err) {
       debugLog('error', err);
@@ -549,8 +547,8 @@
     controlsDiv.appendChild(
       createRadioGroup(
         [
-          { value: 'ANY', label: 'Any tag' },
-          { value: 'ALL', label: 'All tags' }
+          { value: 'ALL', label: 'All tags' },
+          { value: 'ANY', label: 'Any tag' }
         ],
         filterMode,
         'lmao-filter-mode',
@@ -706,6 +704,31 @@
         );
       });
 
+      // Add Learnable Meta tag if present
+      if (tagVisibility.showLearnableMetaTags && isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache)) {
+        const tagDiv = document.createElement('span');
+        tagDiv.className = USER_TAG_CLASS + ' lmao-learnable-meta';
+        tagDiv.textContent = 'Learnable Meta';
+        tagDiv.style.cursor = 'default';
+        tagDiv.addEventListener(
+          'mousedown',
+          (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          },
+          true
+        );
+        tagDiv.addEventListener(
+          'click',
+          (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          },
+          true
+        );
+        tagsContainer.appendChild(tagDiv);
+      }
+
       // Add user tags if enabled
       if (tagVisibility.showUserTags) {
         (userTags[mapKey] || []).forEach((tag) => {
@@ -749,31 +772,6 @@
           }
           tagsContainer.appendChild(tagDiv);
         });
-      }
-
-      // Add Learnable Meta tag if present
-      if (tagVisibility.showLearnableMetaTags && isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache)) {
-        const tagDiv = document.createElement('span');
-        tagDiv.className = USER_TAG_CLASS + ' lmao-learnable-meta';
-        tagDiv.textContent = 'Learnable Meta';
-        tagDiv.style.cursor = 'default';
-        tagDiv.addEventListener(
-          'mousedown',
-          (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-          },
-          true
-        );
-        tagDiv.addEventListener(
-          'click',
-          (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-          },
-          true
-        );
-        tagsContainer.appendChild(tagDiv);
       }
 
       // Add tag input if in edit mode
@@ -917,7 +915,7 @@
       let currentUserTags = { ...userTags };
       let tagVisibility = loadTagVisibility();
       let filterCollapse = loadFilterCollapse();
-      let filterMode = 'ANY';
+      let filterMode = 'ALL';
       let editMode = false;
       const grid = findGridContainer();
       if (!grid) return;
@@ -1059,16 +1057,35 @@
 
     /**
      * Try to initialize the script if on the correct page and grid is present.
+     * Remove controls if not on the correct page.
      */
     function tryInit() {
-      if (!isActivePage()) {
-        gridInitialized = false;
-        return;
-      }
-      const grid = document.querySelector('div[class*="grid_grid__"]');
-      if (grid && !gridInitialized) {
-        gridInitialized = true;
-        init();
+      try {
+        if (!isActivePage()) {
+          gridInitialized = false;
+          // Remove controls panel if present
+          const controlsDiv = document.getElementById('liked-maps-folders-controls');
+          if (controlsDiv && controlsDiv.parentNode) {
+            controlsDiv.parentNode.removeChild(controlsDiv);
+          }
+          return;
+        }
+        const grid = document.querySelector('div[class*="grid_grid__"]');
+        debugLog('[LMAO] grid alive:', !!grid, 'initialized:', !!gridInitialized);
+        if (!grid) {
+          gridInitialized = false;
+          // Keep retrying until grid appears (for SPA back/forward navigation)
+          debugLog('[LMAO] Grid not found. Retrying...');
+          setTimeout(tryInit, 100);
+          return;
+        }
+        if (!gridInitialized) {
+          gridInitialized = true;
+          console.log('[LMAO] initializing');
+          init();
+        }
+      } catch (e) {
+        console.error('[LMAO] Error during tryInit:', e);
       }
     }
 
