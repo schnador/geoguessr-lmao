@@ -60,6 +60,9 @@ Adding a tag:
 - Rework layout & styling for better usability
 - Create video to show installation and usage
 - Rework icon
+- persist filterstate
+- delete all filters button
+- filter favourites??
 
 **Feel free to add suggestions under ["Issues"](https://github.com/schnador/geoguessr-lmao/issues/new) with the tag "enhancement"**
 
