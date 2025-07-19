@@ -2,7 +2,8 @@
 
 A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr](https://www.geoguessr.com/). Add custom tags, filter maps, with instant Learnable Meta integration.
 
-[GITHUB LINK](https://github.com/schnador/geoguessr-lmao)
+[GITHUB](https://github.com/schnador/geoguessr-lmao)
+
 [GREASYFORK](https://greasyfork.org/en/scripts/543001-geoguessr-liked-maps-advanced-overhaul-lmao)
 
 ---
