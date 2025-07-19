@@ -5,7 +5,7 @@
 // @description  Adds organization to liked maps on GeoGuessr. Add tags and filter them. Integrates with Learnable Meta!
 // @author       snador
 // @license      Unlicense
-// @icon         https://github.com/schnador/geoguessr-lmao/blob/main/img/lmao_icon.png?raw=true
+// @icon         https://github.com/schnador/geoguessr-lmao/raw/main/img/lmao_icon.png
 // @downloadURL  https://github.com/schnador/geoguessr-lmao/raw/refs/heads/main/geoguessr-lmao.user.js
 // @updateURL    https://github.com/schnador/geoguessr-lmao/raw/refs/heads/main/geoguessr-lmao.user.js
 // @match        https://www.geoguessr.com/*

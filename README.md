@@ -11,6 +11,14 @@ A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr
 - **De-clutter:** You can now hide the barely useful default tags provided by geoguessr. More space for custom tags 😎
 - **Learnable Meta Integration:** Instantly see which maps are supported by [Learnable Meta](https://learnablemeta.com/).
 
+Unfiltered:
+
+![Unfiltered](https://github.com/schnador/geoguessr-lmao/raw/main/img/activated.png)
+
+Filtered:
+
+![Filtered](https://github.com/schnador/geoguessr-lmao/raw/main/img/filtered.png)
+
 ---
 
 ## Installation
@@ -34,6 +42,10 @@ A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr
     - "All"-Mode: Shows maps, which contains ALL of the selected tags.
   - Toggle visibility of user, Learnable Meta, and default tags
   - Learnable Meta maps are automatically recognized and tagged!
+
+Adding a tag:
+
+![Adding a tag](https://github.com/schnador/geoguessr-lmao/raw/main/img/add-tag.png)
 
 ---
 
