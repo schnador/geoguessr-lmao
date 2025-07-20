@@ -1,5 +1,7 @@
 # [GeoGuessr Liked Maps Advanced Overhaul (LMAO)](https://github.com/schnador/geoguessr-lmao)
 
+<img src="./img/lmao_icon.png" alt="drawing" width="50"/>
+
 A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr](https://www.geoguessr.com/). Add custom tags, filter maps, with instant Learnable Meta integration.
 
 [GITHUB](https://github.com/schnador/geoguessr-lmao)
@@ -38,18 +40,18 @@ Filtered:
 
 ## Usage
 
-- Visit your [Liked Maps page](https://www.geoguessr.com/me/likes) on GeoGuessr.
-- Use the control panel to:
-  - Add or remove tags
-  - Filter maps by tags
-    - "Any"-Mode: Shows maps, which contain ANY of the selected tags.
-    - "All"-Mode: Shows maps, which contains ALL of the selected tags.
-  - Toggle visibility of user, Learnable Meta, and default tags
-  - Learnable Meta maps are automatically recognized and tagged!
-
-Adding a tag:
-
-![Adding a tag](https://github.com/schnador/geoguessr-lmao/raw/main/img/add-tag.png)
+1. Visit your [Liked Maps page](https://www.geoguessr.com/me/likes) on GeoGuessr.
+2. Add tags
+   - Enable "Edit tags" (bottom of the controls panel)
+   - Add a tag by either entering a text or selecting one from the list of available tags: ![Add a tag](https://github.com/schnador/geoguessr-lmao/raw/main/img/add-tag.png)
+   - Press enter to confirm
+   - Disable "Edit tags" when you are done
+3. Use the control panel to:
+   - Filter maps by tags
+     - "Any"-Mode: Shows maps, which contain ANY of the selected tags.
+     - "All"-Mode: Shows maps, which contains ALL of the selected tags.
+   - Toggle visibility of user, Learnable Meta, and default tags
+   - Learnable Meta maps are automatically recognized and tagged!
 
 ---
 
@@ -59,10 +61,10 @@ Adding a tag:
   - for example: "World", "Europe", "Asia", etc..
 - Rework layout & styling for better usability
 - Create video to show installation and usage
-- Rework icon
-- persist filterstate
-- delete all filters button
-- filter favourites??
+- Persist filterstate
+- Delete all filters button
+- Integrate with available scripts that work on the liked maps page
+- Filter favourites??
 
 **Feel free to add suggestions under ["Issues"](https://github.com/schnador/geoguessr-lmao/issues/new) with the tag "enhancement"**
 
