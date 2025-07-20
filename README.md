@@ -42,10 +42,13 @@ Filtered:
 
 1. Visit your [Liked Maps page](https://www.geoguessr.com/me/likes) on GeoGuessr.
 2. Add tags
+
    - Enable "Edit tags" (bottom of the controls panel)
-   - Add a tag by either entering a text or selecting one from the list of available tags: ![Add a tag](https://github.com/schnador/geoguessr-lmao/raw/main/img/add-tag.png)
+   - Add a tag by either entering a text or selecting one from the list of available tags:
+     ![Add a tag](https://github.com/schnador/geoguessr-lmao/raw/main/img/add-tag.png)
    - Press enter to confirm
    - Disable "Edit tags" when you are done
+
 3. Use the control panel to:
    - Filter maps by tags
      - "Any"-Mode: Shows maps, which contain ANY of the selected tags.
