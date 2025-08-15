@@ -190,6 +190,21 @@
     .lmao-file-input {
       display: none;
     }
+    .lmao-clear-filters-button {
+      background: var(--ds-color-red-100);
+      border: 1px solid var(--ds-color-white-20);
+      border-radius: 0.25rem;
+      color: white;
+      cursor: pointer;
+      font-size: 0.875rem;
+      padding: 0.5rem 0.75rem;
+      margin-top: 0.5rem;
+      margin-bottom: 1rem;
+      width: 100%;
+    }
+    .lmao-clear-filters-button:hover {
+      background: var(--ds-color-red-80);
+    }
   `);
 
   var _GM_xmlhttpRequest = /* @__PURE__ */ (() =>
@@ -236,10 +251,94 @@
   const LOCALSTORAGE_USER_TAGS_KEY = 'lmaoUserTags';
   const LOCALSTORAGE_TAG_VISIBILITY_KEY = 'lmaoTagVisibility';
   const LOCALSTORAGE_FILTER_COLLAPSE_KEY = 'lmaoFilterCollapse';
+  const LOCALSTORAGE_SELECTED_TAGS_KEY = 'lmaoSelectedTags';
   const LOCALSTORAGE_ADDITIONAL_MAP_INFO = 'lmaoAdditionalMapInfo';
   const LOCALSTORAGE_GEOMETA_PREFIX = 'geometa:map-info:';
   const USER_TAG_CLASS = 'lmao-map-teaser_tag user-tag';
   const API_TAG_CLASS = 'lmao-map-teaser_tag api-tag';
+
+  // --- GLOBAL STATE ---
+  const AppState = {
+    maps: [],
+    userTagsList: [],
+    apiTagsList: [],
+    metaTagsList: [],
+    selectedTags: [],
+    currentUserTags: {},
+    tagVisibility: {},
+    filterCollapse: {},
+    filterMode: 'ALL',
+    editMode: false,
+    learnableMetaCache: new Set(),
+    metaRegionCache: {},
+    controlsDiv: null,
+
+    // State management methods
+    updateSelectedTags(newTags) {
+      this.selectedTags = newTags;
+      saveSelectedTags(this.selectedTags);
+      this.rebuildControls();
+      this.rerender();
+    },
+
+    updateTagVisibility(newVisibility) {
+      this.tagVisibility = { ...newVisibility };
+      saveTagVisibility(this.tagVisibility);
+      this.rerender();
+    },
+
+    updateFilterCollapse(newCollapse) {
+      this.filterCollapse = newCollapse;
+      saveFilterCollapse(this.filterCollapse);
+      this.rebuildControls();
+    },
+
+    updateFilterMode(newMode) {
+      this.filterMode = newMode;
+      this.rerender();
+    },
+
+    updateEditMode(newMode) {
+      this.editMode = newMode;
+      this.rerender();
+    },
+
+    addUserTag(map, tag) {
+      const key = getMapKey(map);
+      this.currentUserTags[key] = this.currentUserTags[key] || [];
+      this.currentUserTags[key].push(tag);
+      saveUserTags(this.currentUserTags);
+      this.userTagsList = Array.from(new Set(Object.values(this.currentUserTags).flat())).sort();
+      this.rebuildControls();
+      this.rerender();
+    },
+
+    removeUserTag(map, tag) {
+      const key = getMapKey(map);
+      this.currentUserTags[key] = (this.currentUserTags[key] || []).filter((t) => t !== tag);
+      saveUserTags(this.currentUserTags);
+      this.userTagsList = Array.from(new Set(Object.values(this.currentUserTags).flat())).sort();
+      this.rebuildControls();
+      this.rerender();
+    },
+
+    rebuildControls() {
+      const newControls = createControlsUI();
+      const fullHeightContainer = findFullHeightContainer();
+      if (!fullHeightContainer) {
+        console.log('[LMAO] Full height container not found');
+        return;
+      }
+      newControls.id = 'liked-maps-folders-controls';
+      if (this.controlsDiv) this.controlsDiv.replaceWith(newControls);
+      else fullHeightContainer.appendChild(newControls);
+      this.controlsDiv = newControls;
+    },
+
+    rerender() {
+      patchTeasersWithControls();
+    }
+  };
 
   // --- UTILS ---
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -407,6 +506,23 @@
   function saveFilterCollapse(state) {
     debugLog(state);
     _unsafeWindow.localStorage.setItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY, JSON.stringify(state));
+  }
+
+  function loadSelectedTags() {
+    try {
+      return JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_SELECTED_TAGS_KEY)) || [];
+    } catch (err) {
+      debugLog('error loading selected tags', err);
+      return [];
+    }
+  }
+
+  function saveSelectedTags(selectedTags) {
+    debugLog('saving selected tags', selectedTags);
+    _unsafeWindow.localStorage.setItem(
+      LOCALSTORAGE_SELECTED_TAGS_KEY,
+      JSON.stringify(selectedTags)
+    );
   }
 
   // --- EXPORT/IMPORT FUNCTIONS ---
@@ -633,21 +749,7 @@
     return div;
   }
 
-  function createControlsUI(
-    userTagsList,
-    apiTagsList,
-    metaTagsList,
-    selectedTags,
-    onTagFilterChange,
-    onEditModeToggle,
-    tagVisibility,
-    onTagVisibilityChange,
-    onFilterModeToggle,
-    filterCollapse,
-    onCollapseChange,
-    filterMode,
-    editMode
-  ) {
+  function createControlsUI() {
     const controlsDiv = document.createElement('div');
     controlsDiv.className = 'lmao-controls';
 
@@ -667,46 +769,60 @@
           { value: 'ALL', label: 'All tags' },
           { value: 'ANY', label: 'Any tag' }
         ],
-        filterMode,
+        AppState.filterMode,
         'lmao-filter-mode',
-        onFilterModeToggle
+        (newMode) => AppState.updateFilterMode(newMode)
       )
     );
     controlsDiv.appendChild(header('Filter'));
+
+    // Clear filters button
+    const clearFiltersBtn = document.createElement('button');
+    clearFiltersBtn.textContent = 'Clear Filters';
+    clearFiltersBtn.className = 'lmao-clear-filters-button';
+    clearFiltersBtn.onclick = () => AppState.updateSelectedTags([]);
+    controlsDiv.appendChild(clearFiltersBtn);
+
     controlsDiv.appendChild(
       createCollapsibleTagGroup(
         'User tags',
-        userTagsList,
-        selectedTags,
-        onTagFilterChange,
-        filterCollapse.user,
-        (c) => onCollapseChange({ ...filterCollapse, user: c })
+        AppState.userTagsList,
+        AppState.selectedTags,
+        (newTags) => AppState.updateSelectedTags(newTags),
+        AppState.filterCollapse.user,
+        (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, user: c })
       )
     );
     controlsDiv.appendChild(
       createCollapsibleTagGroup(
         'Learnable Meta',
-        metaTagsList,
-        selectedTags,
-        onTagFilterChange,
-        filterCollapse.meta,
-        (c) => onCollapseChange({ ...filterCollapse, meta: c })
+        AppState.metaTagsList,
+        AppState.selectedTags,
+        (newTags) => AppState.updateSelectedTags(newTags),
+        AppState.filterCollapse.meta,
+        (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, meta: c })
       )
     );
     controlsDiv.appendChild(
       createCollapsibleTagGroup(
         'Default tags',
-        apiTagsList,
-        selectedTags,
-        onTagFilterChange,
-        filterCollapse.api,
-        (c) => onCollapseChange({ ...filterCollapse, api: c })
+        AppState.apiTagsList,
+        AppState.selectedTags,
+        (newTags) => AppState.updateSelectedTags(newTags),
+        AppState.filterCollapse.api,
+        (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, api: c })
       )
     );
     controlsDiv.appendChild(header('Tag Visibility'));
-    controlsDiv.appendChild(createTagVisibilityToggles(tagVisibility, onTagVisibilityChange));
+    controlsDiv.appendChild(
+      createTagVisibilityToggles(AppState.tagVisibility, (newVisibility) =>
+        AppState.updateTagVisibility(newVisibility)
+      )
+    );
     controlsDiv.appendChild(header('Edit Mode'));
-    controlsDiv.appendChild(createCheckbox('Edit tags', editMode, onEditModeToggle));
+    controlsDiv.appendChild(
+      createCheckbox('Edit tags', AppState.editMode, (newMode) => AppState.updateEditMode(newMode))
+    );
 
     controlsDiv.appendChild(header('Settings'));
 
@@ -737,46 +853,36 @@
   }
 
   // --- PATCH TEASERS ---
-  function patchTeasersWithControls(
-    maps,
-    userTags,
-    selectedTags,
-    tagVisibility,
-    userTagsList,
-    onTagAdd,
-    onTagRemove,
-    filterMode,
-    editMode,
-    learnableMetaCache,
-    metaRegionCache
-  ) {
+  function patchTeasersWithControls() {
     const grid = findGridContainer();
     if (!grid) return;
     const teasers = findMapTeaserElements(grid);
     teasers.forEach((teaser) => {
       const href = teaser.getAttribute('href');
-      const map = getMapByTeaserHref(maps, href);
+      const map = getMapByTeaserHref(AppState.maps, href);
       if (!map) return;
 
       const mapKey = getMapKey(map);
       // Compute all tags (user, api, meta)
-      const allTags = [...new Set([...(map.tags || []), ...(userTags[mapKey] || [])])];
+      const allTags = [
+        ...new Set([...(map.tags || []), ...(AppState.currentUserTags[mapKey] || [])])
+      ];
       if (
-        isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache) &&
+        isLearnableMetaFromCacheOrLocalStorage(mapKey, AppState.learnableMetaCache) &&
         !allTags.includes('Learnable Meta')
       )
         allTags.push('Learnable Meta');
       if (map.isUserMap === false) allTags.push('Official');
 
       // Filter logic
-      if (selectedTags.length > 0) {
-        if (filterMode === 'ALL') {
-          if (!selectedTags.every((tag) => allTags.includes(tag))) {
+      if (AppState.selectedTags.length > 0) {
+        if (AppState.filterMode === 'ALL') {
+          if (!AppState.selectedTags.every((tag) => allTags.includes(tag))) {
             teaser.closest('li').style.display = 'none';
             return;
           }
         } else {
-          if (!selectedTags.some((tag) => allTags.includes(tag))) {
+          if (!AppState.selectedTags.some((tag) => allTags.includes(tag))) {
             teaser.closest('li').style.display = 'none';
             return;
           }
@@ -796,7 +902,7 @@
         .forEach((e) => e.remove());
 
       // Add Official tag as a default tag if present and showApiTags is true
-      if (tagVisibility.showApiTags && allTags.includes('Official')) {
+      if (AppState.tagVisibility.showApiTags && allTags.includes('Official')) {
         const tagDiv = document.createElement('span');
         tagDiv.className = API_TAG_CLASS;
         tagDiv.textContent = 'Official';
@@ -830,7 +936,7 @@
           !child.className.includes('api-tag') &&
           !child.className.includes('lmao-tag-input')
         ) {
-          child.style.display = tagVisibility.showApiTags ? '' : 'none';
+          child.style.display = AppState.tagVisibility.showApiTags ? '' : 'none';
         }
         child.style.cursor = 'default';
         child.addEventListener(
@@ -853,8 +959,8 @@
 
       // Add Learnable Meta tag if present
       if (
-        tagVisibility.showLearnableMetaTags &&
-        isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache)
+        AppState.tagVisibility.showLearnableMetaTags &&
+        isLearnableMetaFromCacheOrLocalStorage(mapKey, AppState.learnableMetaCache)
       ) {
         const tagDiv = document.createElement('span');
         tagDiv.className = USER_TAG_CLASS + ' lmao-learnable-meta';
@@ -881,12 +987,12 @@
 
       // Add region tags if learnable meta
       if (
-        learnableMetaCache.has(mapKey) &&
-        metaRegionCache &&
-        metaRegionCache[mapKey] &&
-        Array.isArray(metaRegionCache[mapKey].regions)
+        AppState.learnableMetaCache.has(mapKey) &&
+        AppState.metaRegionCache &&
+        AppState.metaRegionCache[mapKey] &&
+        Array.isArray(AppState.metaRegionCache[mapKey].regions)
       ) {
-        metaRegionCache[mapKey].regions.forEach((region) => {
+        AppState.metaRegionCache[mapKey].regions.forEach((region) => {
           const tagDiv = document.createElement('span');
           tagDiv.className = USER_TAG_CLASS + ' lmao-learnable-meta';
           tagDiv.textContent = region;
@@ -912,8 +1018,8 @@
       }
 
       // Add user tags if enabled
-      if (tagVisibility.showUserTags) {
-        (userTags[mapKey] || []).forEach((tag) => {
+      if (AppState.tagVisibility.showUserTags) {
+        (AppState.currentUserTags[mapKey] || []).forEach((tag) => {
           const tagDiv = document.createElement('span');
           tagDiv.className = USER_TAG_CLASS;
           tagDiv.style.cursor = 'default';
@@ -939,7 +1045,7 @@
             },
             true
           );
-          if (editMode) {
+          if (AppState.editMode) {
             const rmBtn = document.createElement('button');
             rmBtn.textContent = '×';
             rmBtn.title = 'Remove tag';
@@ -948,7 +1054,7 @@
               e.preventDefault();
               e.stopPropagation();
               debugLog('patchTeasersWithControls', 'Removing tag', tag, 'from map', map.id);
-              onTagRemove(map, tag);
+              AppState.removeUserTag(map, tag);
             };
             tagDiv.appendChild(rmBtn);
           }
@@ -957,14 +1063,14 @@
       }
 
       // Add tag input if in edit mode
-      if (editMode) {
+      if (AppState.editMode) {
         const datalistId = 'lmao-user-tags-datalist';
         let datalist = document.getElementById(datalistId);
 
         if (!datalist) {
           datalist = document.createElement('datalist');
           datalist.id = datalistId;
-          userTagsList.forEach((tag) => {
+          AppState.userTagsList.forEach((tag) => {
             const option = document.createElement('option');
             option.value = tag;
             datalist.appendChild(option);
@@ -972,7 +1078,7 @@
           document.body.appendChild(datalist);
         } else {
           datalist.innerHTML = '';
-          userTagsList.forEach((tag) => {
+          AppState.userTagsList.forEach((tag) => {
             const option = document.createElement('option');
             option.value = tag;
             datalist.appendChild(option);
@@ -995,7 +1101,7 @@
         addTagInput.addEventListener('input', function () {
           const val = addTagInput.value.toLowerCase();
           datalist.innerHTML = '';
-          userTagsList
+          AppState.userTagsList
             .filter((tag) => tag.toLowerCase().startsWith(val))
             .forEach((tag) => {
               const option = document.createElement('option');
@@ -1010,9 +1116,12 @@
             const val = addTagInput.value.trim();
             if (
               val &&
-              !((userTags[mapKey] || []).includes(val) || (map.tags || []).includes(val))
+              !(
+                (AppState.currentUserTags[mapKey] || []).includes(val) ||
+                (map.tags || []).includes(val)
+              )
             ) {
-              onTagAdd(map, val);
+              AppState.addUserTag(map, val);
               addTagInput.value = '';
             }
           }
@@ -1094,19 +1203,25 @@
 
       // get regions from Learnable Meta API
       const metaRegionCache = await preloadMetaRegions(learnableMetaMapIds);
-      Object.values(metaRegionCache).forEach((regions) => {
-        if (Array.isArray(regions)) regions.forEach((region) => metaTagsSet.add(region));
+      Object.values(metaRegionCache).forEach((regionData) => {
+        if (regionData && Array.isArray(regionData.regions)) {
+          regionData.regions.forEach((region) => metaTagsSet.add(region));
+        }
       });
 
-      let userTagsList = Array.from(userTagsSet).sort();
-      const apiTagsList = Array.from(apiTagsSet).sort();
-      const metaTagsList = metaTagsSet.has('Learnable Meta') ? ['Learnable Meta'] : [];
-      let selectedTags = [];
-      let currentUserTags = { ...userTags };
-      let tagVisibility = loadTagVisibility();
-      let filterCollapse = loadFilterCollapse();
-      let filterMode = 'ALL';
-      let editMode = false;
+      // Initialize AppState
+      AppState.maps = maps;
+      AppState.userTagsList = Array.from(userTagsSet).sort();
+      AppState.apiTagsList = Array.from(apiTagsSet).sort();
+      AppState.metaTagsList = Array.from(metaTagsSet).sort();
+      AppState.selectedTags = loadSelectedTags();
+      AppState.currentUserTags = { ...userTags };
+      AppState.tagVisibility = loadTagVisibility();
+      AppState.filterCollapse = loadFilterCollapse();
+      AppState.filterMode = 'ALL';
+      AppState.editMode = false;
+      AppState.learnableMetaCache = learnableMetaCache;
+      AppState.metaRegionCache = metaRegionCache;
       const grid = findGridContainer();
       if (!grid) return;
 
@@ -1125,100 +1240,11 @@
         likesMapContainer.classList.add('lmao-likes-container');
       }
 
-      let controlsDiv = document.getElementById('liked-maps-folders-controls');
+      AppState.controlsDiv = document.getElementById('liked-maps-folders-controls');
 
-      function rerender() {
-        patchTeasersWithControls(
-          maps,
-          currentUserTags,
-          selectedTags,
-          tagVisibility,
-          userTagsList,
-          onTagAdd,
-          onTagRemove,
-          filterMode,
-          editMode,
-          learnableMetaCache,
-          metaRegionCache
-        );
-      }
-
-      function onTagFilterChange(newTags) {
-        selectedTags = newTags;
-        rerender();
-      }
-
-      function onEditModeToggle(newEditMode) {
-        editMode = newEditMode;
-        rerender();
-      }
-
-      function onTagVisibilityChange(newVisibility) {
-        tagVisibility = newVisibility;
-        rerender();
-      }
-
-      function onFilterModeToggle(newMode) {
-        filterMode = newMode;
-        rerender();
-      }
-
-      function onCollapseChange(newCollapse) {
-        filterCollapse = newCollapse;
-        saveFilterCollapse(filterCollapse);
-        rebuildControls();
-      }
-
-      function onTagAdd(map, tag) {
-        const key = getMapKey(map);
-        currentUserTags[key] = currentUserTags[key] || [];
-        currentUserTags[key].push(tag);
-        saveUserTags(currentUserTags);
-        userTagsList = Array.from(new Set(Object.values(currentUserTags).flat())).sort();
-        rebuildControls();
-        rerender();
-      }
-
-      function onTagRemove(map, tag) {
-        const key = getMapKey(map);
-        currentUserTags[key] = (currentUserTags[key] || []).filter((t) => t !== tag);
-        saveUserTags(currentUserTags);
-        userTagsList = Array.from(new Set(Object.values(currentUserTags).flat())).sort();
-        rebuildControls();
-        rerender();
-      }
-
-      function rebuildControls() {
-        const newControls = createControlsUI(
-          userTagsList,
-          apiTagsList,
-          metaTagsList,
-          selectedTags,
-          onTagFilterChange,
-          onEditModeToggle,
-          tagVisibility,
-          onTagVisibilityChange,
-          onFilterModeToggle,
-          filterCollapse,
-          onCollapseChange,
-          filterMode,
-          editMode
-        );
-
-        const fullHeightContainer = findFullHeightContainer();
-        if (!fullHeightContainer) {
-          console.log('[LMAO] Full height container not found');
-          return;
-        }
-
-        newControls.id = 'liked-maps-folders-controls';
-        if (controlsDiv) controlsDiv.replaceWith(newControls);
-        else fullHeightContainer.appendChild(newControls);
-        controlsDiv = newControls;
-      }
-      if (!controlsDiv) rebuildControls();
+      if (!AppState.controlsDiv) AppState.rebuildControls();
       grid.style.flexGrow = '1';
-      rerender();
+      AppState.rerender();
 
       console.log('[LMAO] Initialization complete.');
     } finally {
