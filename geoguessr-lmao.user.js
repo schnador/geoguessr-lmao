@@ -19,7 +19,7 @@
   'use strict';
 
   // --- STYLE INJECTION ---
-  (css => {
+  ((css) => {
     if (typeof GM_addStyle === 'function') {
       GM_addStyle(css);
     } else {
@@ -173,10 +173,29 @@
     .map-teaser_mapTitleAndTags__iiqiz {
       padding-right: 0.125rem;
     }
+    .lmao-settings-button {
+      background: var(--ds-color-purple-100);
+      border: 1px solid var(--ds-color-white-20);
+      border-radius: 0.25rem;
+      color: white;
+      cursor: pointer;
+      font-size: 0.875rem;
+      padding: 0.5rem 0.75rem;
+      margin-top: 0.5rem;
+      width: 100%;
+    }
+    .lmao-settings-button:hover {
+      background: var(--ds-color-purple-80);
+    }
+    .lmao-file-input {
+      display: none;
+    }
   `);
 
-  var _GM_xmlhttpRequest = /* @__PURE__ */ (() => typeof GM_xmlhttpRequest != "undefined" ? GM_xmlhttpRequest : void 0)();
-  var _unsafeWindow = /* @__PURE__ */ (() => typeof unsafeWindow != "undefined" ? unsafeWindow : void 0)();
+  var _GM_xmlhttpRequest = /* @__PURE__ */ (() =>
+    typeof GM_xmlhttpRequest != 'undefined' ? GM_xmlhttpRequest : void 0)();
+  var _unsafeWindow = /* @__PURE__ */ (() =>
+    typeof unsafeWindow != 'undefined' ? unsafeWindow : void 0)();
 
   // --- CONFIGURATION OBJECT ---
   /**
@@ -186,7 +205,7 @@
     version: GM_info.script.version ? GM_info.script.version : 'unknown',
     features: {
       debugMode: true
-    },
+    }
     // validPaths: ['/me/likes', '/maps/community'],
     // validTabs: [undefined, 'liked-maps']
   };
@@ -251,7 +270,9 @@
     return new Promise((resolve, reject) => {
       if (typeof _GM_xmlhttpRequest !== 'function') {
         console.error('GM_xmlhttpRequest is not available');
-        reject('GM_xmlhttpRequest is not available, please use Version 4.0+ of Tampermonkey or Violentmonkey');
+        reject(
+          'GM_xmlhttpRequest is not available, please use Version 4.0+ of Tampermonkey or Violentmonkey'
+        );
         return;
       }
       _GM_xmlhttpRequest({
@@ -386,6 +407,93 @@
   function saveFilterCollapse(state) {
     debugLog(state);
     _unsafeWindow.localStorage.setItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY, JSON.stringify(state));
+  }
+
+  // --- EXPORT/IMPORT FUNCTIONS ---
+  function exportLMAOSettings() {
+    const exportData = {
+      version: CONFIG.version,
+      exportDate: new Date().toISOString(),
+      data: {}
+    };
+
+    // Collect all localStorage items that start with "lmao" (case-insensitive)
+    for (let i = 0; i < _unsafeWindow.localStorage.length; i++) {
+      const key = _unsafeWindow.localStorage.key(i);
+      if (key && key.toLowerCase().startsWith('lmao')) {
+        try {
+          const value = _unsafeWindow.localStorage.getItem(key);
+          exportData.data[key] = JSON.parse(value);
+        } catch (e) {
+          // If it's not JSON, store as string
+          exportData.data[key] = _unsafeWindow.localStorage.getItem(key);
+        }
+      }
+    }
+
+    return exportData;
+  }
+
+  function downloadExportData() {
+    try {
+      const exportData = exportLMAOSettings();
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(dataBlob);
+      link.download = `lmao-settings-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      debugLog('Settings exported successfully');
+    } catch (error) {
+      console.error('[LMAO] Failed to export settings:', error);
+      alert('Failed to export settings. Check console for details.');
+    }
+  }
+
+  function importLMAOSettings(importData) {
+    try {
+      if (!importData.data || typeof importData.data !== 'object') {
+        throw new Error('Invalid import data format');
+      }
+
+      // Import only LMAO-specific localStorage keys
+      Object.keys(importData.data).forEach((key) => {
+        if (key.toLowerCase().startsWith('lmao')) {
+          const value =
+            typeof importData.data[key] === 'object'
+              ? JSON.stringify(importData.data[key])
+              : importData.data[key];
+          _unsafeWindow.localStorage.setItem(key, value);
+        }
+      });
+
+      debugLog('Settings imported successfully');
+      alert('Settings imported successfully! Please refresh the page to see changes.');
+    } catch (error) {
+      console.error('[LMAO] Failed to import settings:', error);
+      alert('Failed to import settings. Please check the file format.');
+    }
+  }
+
+  function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        const importData = JSON.parse(e.target.result);
+        importLMAOSettings(importData);
+      } catch (error) {
+        console.error('[LMAO] Failed to parse import file:', error);
+        alert('Invalid file format. Please select a valid LMAO settings file.');
+      }
+    };
+    reader.readAsText(file);
   }
 
   // --- API ---
@@ -599,23 +707,49 @@
     controlsDiv.appendChild(createTagVisibilityToggles(tagVisibility, onTagVisibilityChange));
     controlsDiv.appendChild(header('Edit Mode'));
     controlsDiv.appendChild(createCheckbox('Edit tags', editMode, onEditModeToggle));
+
+    controlsDiv.appendChild(header('Settings'));
+
+    // Export button
+    const exportBtn = document.createElement('button');
+    exportBtn.textContent = 'Export Settings';
+    exportBtn.className = 'lmao-settings-button';
+    exportBtn.onclick = downloadExportData;
+    controlsDiv.appendChild(exportBtn);
+
+    // Import button and hidden file input
+    const importBtn = document.createElement('button');
+    importBtn.textContent = 'Import Settings';
+    importBtn.className = 'lmao-settings-button';
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.className = 'lmao-file-input';
+    fileInput.onchange = handleImportFile;
+
+    importBtn.onclick = () => fileInput.click();
+
+    controlsDiv.appendChild(importBtn);
+    controlsDiv.appendChild(fileInput);
+
     return controlsDiv;
   }
 
   // --- PATCH TEASERS ---
-function patchTeasersWithControls(
-  maps,
-  userTags,
-  selectedTags,
-  tagVisibility,
-  userTagsList,
-  onTagAdd,
-  onTagRemove,
-  filterMode,
-  editMode,
-  learnableMetaCache,
-  metaRegionCache
-) {
+  function patchTeasersWithControls(
+    maps,
+    userTags,
+    selectedTags,
+    tagVisibility,
+    userTagsList,
+    onTagAdd,
+    onTagRemove,
+    filterMode,
+    editMode,
+    learnableMetaCache,
+    metaRegionCache
+  ) {
     const grid = findGridContainer();
     if (!grid) return;
     const teasers = findMapTeaserElements(grid);
@@ -627,7 +761,10 @@ function patchTeasersWithControls(
       const mapKey = getMapKey(map);
       // Compute all tags (user, api, meta)
       const allTags = [...new Set([...(map.tags || []), ...(userTags[mapKey] || [])])];
-      if (isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache) && !allTags.includes('Learnable Meta'))
+      if (
+        isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache) &&
+        !allTags.includes('Learnable Meta')
+      )
         allTags.push('Learnable Meta');
       if (map.isUserMap === false) allTags.push('Official');
 
@@ -715,7 +852,10 @@ function patchTeasersWithControls(
       });
 
       // Add Learnable Meta tag if present
-      if (tagVisibility.showLearnableMetaTags && isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache)) {
+      if (
+        tagVisibility.showLearnableMetaTags &&
+        isLearnableMetaFromCacheOrLocalStorage(mapKey, learnableMetaCache)
+      ) {
         const tagDiv = document.createElement('span');
         tagDiv.className = USER_TAG_CLASS + ' lmao-learnable-meta';
         tagDiv.textContent = 'Learnable Meta';
@@ -740,8 +880,13 @@ function patchTeasersWithControls(
       }
 
       // Add region tags if learnable meta
-      if (learnableMetaCache.has(mapKey) && metaRegionCache && metaRegionCache[mapKey] && Array.isArray(metaRegionCache[mapKey].regions)) {
-        metaRegionCache[mapKey].regions.forEach(region => {
+      if (
+        learnableMetaCache.has(mapKey) &&
+        metaRegionCache &&
+        metaRegionCache[mapKey] &&
+        Array.isArray(metaRegionCache[mapKey].regions)
+      ) {
+        metaRegionCache[mapKey].regions.forEach((region) => {
           const tagDiv = document.createElement('span');
           tagDiv.className = USER_TAG_CLASS + ' lmao-learnable-meta';
           tagDiv.textContent = region;
@@ -949,8 +1094,8 @@ function patchTeasersWithControls(
 
       // get regions from Learnable Meta API
       const metaRegionCache = await preloadMetaRegions(learnableMetaMapIds);
-      Object.values(metaRegionCache).forEach(regions => {
-        if (Array.isArray(regions)) regions.forEach(region => metaTagsSet.add(region));
+      Object.values(metaRegionCache).forEach((regions) => {
+        if (Array.isArray(regions)) regions.forEach((region) => metaTagsSet.add(region));
       });
 
       let userTagsList = Array.from(userTagsSet).sort();
@@ -966,10 +1111,14 @@ function patchTeasersWithControls(
       if (!grid) return;
 
       const container = grid.closest('div[class*="container_content__"]');
-      if (container && !container.className.includes('lmao-full-width-container')) container.classList.add('lmao-full-width-container');
+      if (container && !container.className.includes('lmao-full-width-container'))
+        container.classList.add('lmao-full-width-container');
 
       const likesMapDiv = grid.closest('div[class*="likes_map__"]');
-      if (likesMapDiv) { likesMapDiv.style.display = 'flex'; likesMapDiv.marginTop = '1rem'; }
+      if (likesMapDiv) {
+        likesMapDiv.style.display = 'flex';
+        likesMapDiv.marginTop = '1rem';
+      }
 
       const likesMapContainer = likesMapDiv.parentElement;
       if (likesMapContainer && !likesMapContainer.className.includes('lmao-likes-container')) {
