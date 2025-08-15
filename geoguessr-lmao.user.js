@@ -61,6 +61,10 @@
       border-color: var(--ds-color-white-40);
       background:rgba(76, 175, 80, 0.30);
     }
+    .lmao-map-teaser_tag.lmao-region {
+      border-color: var(--ds-color-white-40);
+      background:rgba(108, 185, 40, 0.30);
+    }
     .lmao-tag-remove-btn {
       margin-left: 0.2em;
       font-size: 1em;
@@ -204,6 +208,12 @@
     }
     .lmao-clear-filters-button:hover {
       background: var(--ds-color-red-80);
+    }
+    .lmao-default-bottom-margin {
+      margin-bottom: 0.5rem;
+    }
+    .lmao-no-left-margin {
+      margin-left: 0;
     }
   `);
 
@@ -469,17 +479,21 @@
   }
 
   function loadTagVisibility() {
+    const defaultTagVisibility = {
+      showUserTags: true,
+      showLearnableMetaTag: true,
+      showRegionTags: true,
+      showApiTags: false
+    };
+
     try {
       return (
-        JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_TAG_VISIBILITY_KEY)) || {
-          showUserTags: true,
-          showLearnableMetaTags: true,
-          showApiTags: false
-        }
+        JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_TAG_VISIBILITY_KEY)) ||
+        defaultTagVisibility
       );
     } catch (err) {
       debugLog('error', err);
-      return { showUserTags: true, showLearnableMetaTags: true, showApiTags: false };
+      return defaultTagVisibility;
     }
   }
 
@@ -640,12 +654,16 @@
   }
 
   // --- UI HELPERS ---
-  function createCheckbox(labelText, checked, onChange) {
+  function createCheckbox(labelText, checked, onChange, classList = null) {
     const label = document.createElement('label');
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.checked = checked;
     cb.addEventListener('change', () => onChange(cb.checked));
+    if (classList) {
+      cb.classList = classList;
+    }
+
     label.appendChild(cb);
     label.appendChild(document.createTextNode(' ' + labelText));
     return label;
@@ -724,6 +742,14 @@
     div.className = 'lmao-tag-visibility-toggles';
 
     div.appendChild(
+      createCheckbox('Show learnable meta tag', tagVisibility.showLearnableMetaTag, (checked) => {
+        tagVisibility.showLearnableMetaTag = checked;
+        saveTagVisibility(tagVisibility);
+        onChange({ ...tagVisibility });
+      })
+    );
+
+    div.appendChild(
       createCheckbox('Show user tags', tagVisibility.showUserTags, (checked) => {
         tagVisibility.showUserTags = checked;
         saveTagVisibility(tagVisibility);
@@ -732,8 +758,8 @@
     );
 
     div.appendChild(
-      createCheckbox('Show learnable meta tags', tagVisibility.showLearnableMetaTags, (checked) => {
-        tagVisibility.showLearnableMetaTags = checked;
+      createCheckbox('Show region tags', tagVisibility.showRegionTags, (checked) => {
+        tagVisibility.showRegionTags = checked;
         saveTagVisibility(tagVisibility);
         onChange({ ...tagVisibility });
       })
@@ -783,6 +809,24 @@
     clearFiltersBtn.onclick = () => AppState.updateSelectedTags([]);
     controlsDiv.appendChild(clearFiltersBtn);
 
+    // Show Learnable Meta checkbox (without header) if user has learnable meta maps
+    const hasLearnableMeta = AppState.learnableMetaCache.size > 0;
+    if (hasLearnableMeta) {
+      const learnableMetaCheckbox = createCheckbox(
+        'Learnable Meta',
+        AppState.selectedTags.includes('Learnable Meta'),
+        (checked) => {
+          const newTags = checked
+            ? [...AppState.selectedTags, 'Learnable Meta']
+            : AppState.selectedTags.filter((tag) => tag !== 'Learnable Meta');
+          AppState.updateSelectedTags(newTags);
+        },
+        ['lmao-no-left-margin']
+      );
+      learnableMetaCheckbox.className = 'lmao-default-bottom-margin';
+      controlsDiv.appendChild(learnableMetaCheckbox);
+    }
+
     controlsDiv.appendChild(
       createCollapsibleTagGroup(
         'User tags',
@@ -793,16 +837,22 @@
         (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, user: c })
       )
     );
-    controlsDiv.appendChild(
-      createCollapsibleTagGroup(
-        'Learnable Meta',
-        AppState.metaTagsList,
-        AppState.selectedTags,
-        (newTags) => AppState.updateSelectedTags(newTags),
-        AppState.filterCollapse.meta,
-        (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, meta: c })
-      )
-    );
+
+    // Show Regions section only if user has learnable meta maps and there are region tags
+    const regionTags = AppState.metaTagsList.filter((tag) => tag !== 'Learnable Meta');
+    if (hasLearnableMeta && regionTags.length > 0) {
+      controlsDiv.appendChild(
+        createCollapsibleTagGroup(
+          'Regions',
+          regionTags,
+          AppState.selectedTags,
+          (newTags) => AppState.updateSelectedTags(newTags),
+          AppState.filterCollapse.meta,
+          (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, meta: c })
+        )
+      );
+    }
+
     controlsDiv.appendChild(
       createCollapsibleTagGroup(
         'Default tags',
@@ -959,7 +1009,7 @@
 
       // Add Learnable Meta tag if present
       if (
-        AppState.tagVisibility.showLearnableMetaTags &&
+        AppState.tagVisibility.showLearnableMetaTag &&
         isLearnableMetaFromCacheOrLocalStorage(mapKey, AppState.learnableMetaCache)
       ) {
         const tagDiv = document.createElement('span');
@@ -987,6 +1037,7 @@
 
       // Add region tags if learnable meta
       if (
+        AppState.tagVisibility.showRegionTags &&
         AppState.learnableMetaCache.has(mapKey) &&
         AppState.metaRegionCache &&
         AppState.metaRegionCache[mapKey] &&
@@ -994,7 +1045,7 @@
       ) {
         AppState.metaRegionCache[mapKey].regions.forEach((region) => {
           const tagDiv = document.createElement('span');
-          tagDiv.className = USER_TAG_CLASS + ' lmao-learnable-meta';
+          tagDiv.className = USER_TAG_CLASS + ' lmao-region';
           tagDiv.textContent = region;
           tagDiv.style.cursor = 'default';
           tagDiv.addEventListener(
