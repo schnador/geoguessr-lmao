@@ -183,9 +183,9 @@
    * Central configuration for LMAO userscript.
    */
   const CONFIG = {
-    version: GM_info.script.version ? GM_info.script.version : '1.0.0-unknown',
+    version: GM_info.script.version ? GM_info.script.version : 'unknown',
     features: {
-      debugMode: false
+      debugMode: true
     },
     // validPaths: ['/me/likes', '/maps/community'],
     // validTabs: [undefined, 'liked-maps']
@@ -213,9 +213,11 @@
   }
 
   // --- CONSTANTS & LOCALSTORAGE KEYS ---
+  const LOCALSTORAGE_INTERNAL_CONFIG = 'lmaoDevConfig';
   const LOCALSTORAGE_USER_TAGS_KEY = 'lmaoUserTags';
   const LOCALSTORAGE_TAG_VISIBILITY_KEY = 'lmaoTagVisibility';
   const LOCALSTORAGE_FILTER_COLLAPSE_KEY = 'lmaoFilterCollapse';
+  const LOCALSTORAGE_ADDITIONAL_MAP_INFO = 'lmaoAdditionalMapInfo';
   const LOCALSTORAGE_GEOMETA_PREFIX = 'geometa:map-info:';
   const USER_TAG_CLASS = 'lmao-map-teaser_tag user-tag';
   const API_TAG_CLASS = 'lmao-map-teaser_tag api-tag';
@@ -233,6 +235,10 @@
     const mapIdOrSlug = idMatch[1];
     // Try to find by id or by slug
     return maps.find((m) => m.id === mapIdOrSlug || m.slug === mapIdOrSlug) || null;
+  }
+
+  function saveDevConfig() {
+    _unsafeWindow.localStorage.setItem(LOCALSTORAGE_INTERNAL_CONFIG, JSON.stringify(CONFIG));
   }
 
   /**
@@ -286,9 +292,9 @@
     if (!forceUpdate) {
       const savedMapInfo = _unsafeWindow.localStorage.getItem(localStorageMapInfoKey);
       if (savedMapInfo) {
-        const mapInfo2 = JSON.parse(savedMapInfo);
-        debugLog('loaded from localStorage', mapInfo2);
-        return mapInfo2;
+        const mapInfoFromLocalStorage = JSON.parse(savedMapInfo);
+        debugLog('loaded from localStorage', mapInfoFromLocalStorage);
+        return mapInfoFromLocalStorage;
       }
     }
     const url = `https://learnablemeta.com/api/userscript/map/${geoguessrId}`;
@@ -597,18 +603,19 @@
   }
 
   // --- PATCH TEASERS ---
-  function patchTeasersWithControls(
-    maps,
-    userTags,
-    selectedTags,
-    tagVisibility,
-    userTagsList,
-    onTagAdd,
-    onTagRemove,
-    filterMode,
-    editMode,
-    learnableMetaCache
-  ) {
+function patchTeasersWithControls(
+  maps,
+  userTags,
+  selectedTags,
+  tagVisibility,
+  userTagsList,
+  onTagAdd,
+  onTagRemove,
+  filterMode,
+  editMode,
+  learnableMetaCache,
+  metaRegionCache
+) {
     const grid = findGridContainer();
     if (!grid) return;
     const teasers = findMapTeaserElements(grid);
@@ -732,6 +739,33 @@
         tagsContainer.appendChild(tagDiv);
       }
 
+      // Add region tags if learnable meta
+      if (learnableMetaCache.has(mapKey) && metaRegionCache && metaRegionCache[mapKey] && Array.isArray(metaRegionCache[mapKey].regions)) {
+        metaRegionCache[mapKey].regions.forEach(region => {
+          const tagDiv = document.createElement('span');
+          tagDiv.className = USER_TAG_CLASS + ' lmao-learnable-meta';
+          tagDiv.textContent = region;
+          tagDiv.style.cursor = 'default';
+          tagDiv.addEventListener(
+            'mousedown',
+            (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            },
+            true
+          );
+          tagDiv.addEventListener(
+            'click',
+            (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            },
+            true
+          );
+          tagsContainer.appendChild(tagDiv);
+        });
+      }
+
       // Add user tags if enabled
       if (tagVisibility.showUserTags) {
         (userTags[mapKey] || []).forEach((tag) => {
@@ -778,7 +812,7 @@
       }
 
       // Add tag input if in edit mode
-      if (editMode && tagVisibility.showUserTags) {
+      if (editMode) {
         const datalistId = 'lmao-user-tags-datalist';
         let datalist = document.getElementById(datalistId);
 
@@ -901,15 +935,23 @@
       const learnableMetaCache = new Set();
 
       // Await fetchAndCacheLearnableMeta only during init, then cache result in learnableMetaCache
+      const learnableMetaMapIds = [];
       for (const map of maps) {
         (userTags[getMapKey(map)] || []).forEach((t) => userTagsSet.add(t));
         (map.tags || []).forEach((t) => apiTagsSet.add(t));
         if (await fetchAndCacheLearnableMeta(getMapKey(map))) {
           metaTagsSet.add('Learnable Meta');
           learnableMetaCache.add(getMapKey(map));
+          learnableMetaMapIds.push(getMapKey(map));
         }
         if (map.isUserMap === false) apiTagsSet.add('Official');
       }
+
+      // get regions from Learnable Meta API
+      const metaRegionCache = await preloadMetaRegions(learnableMetaMapIds);
+      Object.values(metaRegionCache).forEach(regions => {
+        if (Array.isArray(regions)) regions.forEach(region => metaTagsSet.add(region));
+      });
 
       let userTagsList = Array.from(userTagsSet).sort();
       const apiTagsList = Array.from(apiTagsSet).sort();
@@ -947,7 +989,8 @@
           onTagRemove,
           filterMode,
           editMode,
-          learnableMetaCache
+          learnableMetaCache,
+          metaRegionCache
         );
       }
 
@@ -1086,6 +1129,8 @@
           gridInitialized = true;
           console.log('[LMAO] initializing');
           init();
+
+          saveDevConfig();
         }
       } catch (e) {
         console.error('[LMAO] Error during tryInit:', e);
@@ -1134,4 +1179,120 @@
   };
 
   waitForLoad();
+
+  /**
+   * Loads and updates region tags for all Learnable Meta maps at startup.
+   * Only fetches regions for maps not present in the cache.
+   *
+   * @param {string[]} learnableMetaMapIds - Array of GeoGuessr map IDs
+   * @returns {Promise<Object<string, string[]>>} Updated region cache
+   * @example
+   * const cache = await preloadMetaRegions(["abc123", "def456"]);
+   * // cache["abc123"] might be ["south america"]
+   */
+  /**
+   * Loads the region tag cache from localStorage.
+   * @returns {Object<string, {regions: string[]}>} The region cache object
+   */
+  function loadMetaRegionCache() {
+    try {
+      const raw = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_ADDITIONAL_MAP_INFO);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === 'object' && parsed !== null) return parsed;
+      return {};
+    } catch (e) {
+      debugLog('Failed to load meta region cache', e);
+      return {};
+    }
+  }
+
+  /**
+   * Saves the region tag cache to localStorage.
+   * @param {Object<string, {regions: string[]}>} cache - The region cache object
+   */
+  function saveMetaRegionCache(cache) {
+    try {
+      _unsafeWindow.localStorage.setItem(LOCALSTORAGE_ADDITIONAL_MAP_INFO, JSON.stringify(cache));
+    } catch (e) {
+      debugLog('Failed to save meta region cache', e);
+    }
+  }
+
+  /**
+   * Fetches region tags for a map from the Learnable Meta API.
+   * @param {string} mapId - The GeoGuessr map ID
+   * @returns {Promise<string[]>} Array of region tags (may be empty)
+   */
+  async function fetchMetaRegionsFromAPI(mapId) {
+    const url = `https://learnablemeta.com/api/maps?geoguessrId=${mapId}`;
+    debugLog('Fetching meta regions from API', url);
+    return new Promise((resolve, reject) => {
+      if (typeof _GM_xmlhttpRequest !== 'function') {
+        reject('GM_xmlhttpRequest is not available');
+        return;
+      }
+      _GM_xmlhttpRequest({
+        method: 'GET',
+        url,
+        onload: (response) => {
+          if (response.status === 200) {
+            try {
+              const responseData = JSON.parse(response.responseText);
+              const data = responseData[0] || {}; // should always be ONE item in the array
+              debugLog('Meta regions response', data);
+              if (Array.isArray(data.regions)) {
+                console.log('[LMAO]  !!!! isArray:', data.regions);
+                resolve(data.regions);
+              } else {
+                resolve([]);
+              }
+            } catch (e) {
+              debugLog('Failed to parse meta regions response', e);
+              resolve([]);
+            }
+          } else if (response.status === 404) {
+            resolve([]);
+          } else {
+            reject(`HTTP error! status: ${response.status}`);
+          }
+        },
+        onerror: () => {
+          reject('An error occurred while fetching meta regions');
+        }
+      });
+    });
+  }
+
+  /**
+   * Loads and updates region tags for all Learnable Meta maps at startup.
+   * Only fetches regions for maps not present in the cache.
+   *
+   * @param {string[]} learnableMetaMapIds - Array of GeoGuessr map IDs
+   * @returns {Promise<Object<string, {regions: string[]}>>} Updated region cache
+   * @example
+   * const cache = await preloadMetaRegions(["abc123", "def456"]);
+   * // cache["abc123"] might be { regions: ["south america"] }
+   */
+  async function preloadMetaRegions(learnableMetaMapIds) {
+    const cache = loadMetaRegionCache();
+    debugLog('Loaded meta region cache', cache);
+    let updated = false;
+    for (const mapId of learnableMetaMapIds) {
+      if (!cache.hasOwnProperty(mapId)) {
+        try {
+          const regions = await fetchMetaRegionsFromAPI(mapId);
+          if (regions?.length) {
+            debugLog('Found regions for', mapId, regions);
+            cache[mapId] = { regions };
+            updated = true;
+          }
+        } catch (e) {
+          debugLog('Failed to fetch regions for', mapId, e);
+        }
+      }
+    }
+    if (updated) saveMetaRegionCache(cache);
+    return cache;
+  }
 })();
