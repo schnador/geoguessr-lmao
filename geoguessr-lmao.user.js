@@ -34,7 +34,8 @@
       margin: 0;
     }
     .lmao-likes-container {
-      margin-left: 18rem;
+      flex: 1;
+      min-width: 0;
     }
     .lmao-map-teaser_tag {
       border: .0625rem solid var(--ds-color-white-40);
@@ -97,23 +98,24 @@
       margin-right: 2rem;
     }
     .lmao-controls {
-      margin-left: 1rem;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       width: 15rem;
+      min-width: 15rem;
       background: rgb(16 16 28/80%);
       padding: 1em;
       z-index: 1000;
       border-radius: 1rem;
       height: min-content;
-      position: fixed;
-      top: 50%;
-      transform: translateY(-50%);
-      max-height: calc(100vh - 2em);
+      position: sticky;
+      top: 2rem;
+      max-height: calc(100vh - 4rem);
       overflow-y: auto;
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
+      margin-right: 1rem;
+      flex-shrink: 0;
     }
     .lmao-collapsible-tag-group {
       margin-bottom: 0.5rem;
@@ -214,6 +216,93 @@
     }
     .lmao-no-left-margin {
       margin-left: 0;
+    }
+    .lmao-header-controls {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      z-index: 1000;
+    }
+    .lmao-header-button {
+      background: var(--ds-color-purple-100);
+      border: 1px solid var(--ds-color-white-20);
+      border-radius: 0.25rem;
+      color: white;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 0.375rem 0.5rem;
+      white-space: nowrap;
+    }
+    .lmao-header-button:hover {
+      background: var(--ds-color-purple-80);
+    }
+    .lmao-header-button.lmao-clear-button {
+      background: var(--ds-color-red-100);
+    }
+    .lmao-header-button.lmao-clear-button:hover {
+      background: var(--ds-color-red-80);
+    }
+    .lmao-header-search-placeholder {
+      width: 200px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 0.25rem;
+      border: 1px solid var(--ds-color-white-20);
+      opacity: 0.5;
+    }
+    .lmao-header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-left: auto;
+    }
+    .lmao-settings-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .lmao-settings-dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      background: rgb(16 16 28/95%);
+      min-width: 160px;
+      border-radius: 0.5rem;
+      border: 1px solid var(--ds-color-white-20);
+      z-index: 1001;
+      backdrop-filter: blur(10px);
+    }
+    .lmao-settings-dropdown-content.show {
+      display: block;
+    }
+    .lmao-settings-dropdown-item {
+      background: transparent;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 0.875rem;
+      padding: 0.75rem 1rem;
+      width: 100%;
+      text-align: left;
+      border-radius: 0;
+    }
+    .lmao-settings-dropdown-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .lmao-settings-dropdown-item:first-child {
+      border-radius: 0.5rem 0.5rem 0 0;
+    }
+    .lmao-settings-dropdown-item:last-child {
+      border-radius: 0 0 0.5rem 0.5rem;
+    }
+    /* Ensure header actions are properly aligned with h1 */
+    h1[class*="headline_heading__"] {
+      margin: 0;
+    }
+    h1[class*="headline_heading__"] + .lmao-header-actions {
+      margin-left: auto;
     }
   `);
 
@@ -334,15 +423,77 @@
 
     rebuildControls() {
       const newControls = createControlsUI();
-      const fullHeightContainer = findFullHeightContainer();
-      if (!fullHeightContainer) {
-        console.log('[LMAO] Full height container not found');
+
+      // Find the proper container for the sidebar
+      // We want to insert it into the likes_map div so it's a sibling of the grid
+      const grid = findGridContainer();
+      let targetContainer = null;
+
+      if (grid) {
+        const likesMapDiv = grid.closest('div[class*="likes_map__"]');
+        if (likesMapDiv) {
+          targetContainer = likesMapDiv;
+          console.log('[LMAO] Using likes_map div as target container');
+        }
+      }
+
+      if (!targetContainer) {
+        targetContainer = findFullHeightContainer();
+        console.log('[LMAO] Falling back to main container');
+      }
+
+      if (!targetContainer) {
+        console.log('[LMAO] No suitable container found for sidebar');
         return;
       }
-      newControls.id = 'liked-maps-folders-controls';
-      if (this.controlsDiv) this.controlsDiv.replaceWith(newControls);
-      else fullHeightContainer.appendChild(newControls);
+
+      newControls.id = 'liked-maps-filter-controls';
+
+      if (this.controlsDiv) {
+        this.controlsDiv.replaceWith(newControls);
+      } else {
+        // Insert the sidebar at the beginning of the container
+        if (targetContainer.firstChild) {
+          targetContainer.insertBefore(newControls, targetContainer.firstChild);
+        } else {
+          targetContainer.appendChild(newControls);
+        }
+      }
+
       this.controlsDiv = newControls;
+      console.log('[LMAO] Sidebar inserted into:', targetContainer);
+
+      // Add header actions
+      this.addHeaderActions();
+    },
+
+    addHeaderActions() {
+      // Remove existing header actions if any
+      const existingActions = document.querySelector('.lmao-header-actions');
+      if (existingActions) existingActions.remove();
+
+      // Find the header area
+      const heading = findHeading();
+      if (!heading) {
+        console.log('[LMAO] Heading not found');
+        return;
+      }
+
+      console.log('[LMAO] Found heading:', heading);
+
+      // Create and add header actions
+      const headerActions = createHeaderActions();
+
+      const parent = heading.parentElement;
+      if (parent) {
+        console.log('[LMAO] Adding header actions to parent:', parent);
+        parent.style.display = 'flex';
+        parent.style.alignItems = 'center';
+        parent.style.justifyContent = 'space-between';
+        parent.insertBefore(headerActions, findLikesMapDiv());
+      } else {
+        console.log('[LMAO] No parent found for heading');
+      }
     },
 
     rerender() {
@@ -466,6 +617,122 @@
       console.error('error parsing', err);
       return false;
     }
+  }
+
+  /**
+   * Loads and updates region tags for all Learnable Meta maps at startup.
+   * Only fetches regions for maps not present in the cache.
+   *
+   * @param {string[]} learnableMetaMapIds - Array of GeoGuessr map IDs
+   * @returns {Promise<Object<string, string[]>>} Updated region cache
+   * @example
+   * const cache = await preloadMetaRegions(["abc123", "def456"]);
+   * // cache["abc123"] might be ["south america"]
+   */
+  /**
+   * Loads the region tag cache from localStorage.
+   * @returns {Object<string, {regions: string[]}>} The region cache object
+   */
+  function loadMetaRegionCache() {
+    try {
+      const raw = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_ADDITIONAL_MAP_INFO);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === 'object' && parsed !== null) return parsed;
+      return {};
+    } catch (e) {
+      debugLog('Failed to load meta region cache', e);
+      return {};
+    }
+  }
+
+  /**
+   * Saves the region tag cache to localStorage.
+   * @param {Object<string, {regions: string[]}>} cache - The region cache object
+   */
+  function saveMetaRegionCache(cache) {
+    try {
+      _unsafeWindow.localStorage.setItem(LOCALSTORAGE_ADDITIONAL_MAP_INFO, JSON.stringify(cache));
+    } catch (e) {
+      debugLog('Failed to save meta region cache', e);
+    }
+  }
+
+  /**
+   * Fetches region tags for a map from the Learnable Meta API.
+   * @param {string} mapId - The GeoGuessr map ID
+   * @returns {Promise<string[]>} Array of region tags (may be empty)
+   */
+  async function fetchMetaRegionsFromAPI(mapId) {
+    const url = `https://learnablemeta.com/api/maps?geoguessrId=${mapId}`;
+    debugLog('Fetching meta regions from API', url);
+    return new Promise((resolve, reject) => {
+      if (typeof _GM_xmlhttpRequest !== 'function') {
+        reject('GM_xmlhttpRequest is not available');
+        return;
+      }
+      _GM_xmlhttpRequest({
+        method: 'GET',
+        url,
+        onload: (response) => {
+          if (response.status === 200) {
+            try {
+              const responseData = JSON.parse(response.responseText);
+              const data = responseData[0] || {}; // should always be ONE item in the array
+              debugLog('Meta regions response', data);
+              if (Array.isArray(data.regions)) {
+                console.log('[LMAO]  !!!! isArray:', data.regions);
+                resolve(data.regions);
+              } else {
+                resolve([]);
+              }
+            } catch (e) {
+              debugLog('Failed to parse meta regions response', e);
+              resolve([]);
+            }
+          } else if (response.status === 404) {
+            resolve([]);
+          } else {
+            reject(`HTTP error! status: ${response.status}`);
+          }
+        },
+        onerror: () => {
+          reject('An error occurred while fetching meta regions');
+        }
+      });
+    });
+  }
+
+  /**
+   * Loads and updates region tags for all Learnable Meta maps at startup.
+   * Only fetches regions for maps not present in the cache.
+   *
+   * @param {string[]} learnableMetaMapIds - Array of GeoGuessr map IDs
+   * @returns {Promise<Object<string, {regions: string[]}>>} Updated region cache
+   * @example
+   * const cache = await preloadMetaRegions(["abc123", "def456"]);
+   * // cache["abc123"] might be { regions: ["south america"] }
+   */
+  async function preloadMetaRegions(learnableMetaMapIds) {
+    const cache = loadMetaRegionCache();
+    debugLog('Loaded meta region cache', cache);
+    let updated = false;
+    for (const mapId of learnableMetaMapIds) {
+      if (!cache.hasOwnProperty(mapId)) {
+        try {
+          const regions = await fetchMetaRegionsFromAPI(mapId);
+          if (regions?.length) {
+            debugLog('Found regions for', mapId, regions);
+            cache[mapId] = { regions };
+            updated = true;
+          }
+        } catch (e) {
+          debugLog('Failed to fetch regions for', mapId, e);
+        }
+      }
+    }
+    if (updated) saveMetaRegionCache(cache);
+    return cache;
   }
 
   // --- LOCALSTORAGE STATE ---
@@ -802,13 +1069,6 @@
     );
     controlsDiv.appendChild(header('Filter'));
 
-    // Clear filters button
-    const clearFiltersBtn = document.createElement('button');
-    clearFiltersBtn.textContent = 'Clear Filters';
-    clearFiltersBtn.className = 'lmao-clear-filters-button';
-    clearFiltersBtn.onclick = () => AppState.updateSelectedTags([]);
-    controlsDiv.appendChild(clearFiltersBtn);
-
     // Show Learnable Meta checkbox (without header) if user has learnable meta maps
     const hasLearnableMeta = AppState.learnableMetaCache.size > 0;
     if (hasLearnableMeta) {
@@ -874,32 +1134,79 @@
       createCheckbox('Edit tags', AppState.editMode, (newMode) => AppState.updateEditMode(newMode))
     );
 
-    controlsDiv.appendChild(header('Settings'));
+    // Settings buttons moved to header - removed from sidebar
+
+    return controlsDiv;
+  }
+
+  function createHeaderActions() {
+    const headerActions = document.createElement('div');
+    headerActions.className = 'lmao-header-actions';
+
+    // Clear filters button
+    const clearFiltersBtn = document.createElement('button');
+    clearFiltersBtn.textContent = 'Clear Filters';
+    clearFiltersBtn.className = 'lmao-header-button lmao-clear-button';
+    clearFiltersBtn.onclick = () => AppState.updateSelectedTags([]);
+    headerActions.appendChild(clearFiltersBtn);
+
+    // Settings dropdown
+    const settingsDropdown = document.createElement('div');
+    settingsDropdown.className = 'lmao-settings-dropdown';
+
+    const settingsBtn = document.createElement('button');
+    settingsBtn.innerHTML = '⚙️'; // Cogwheel icon
+    settingsBtn.className = 'lmao-header-button';
+    settingsBtn.onclick = (e) => {
+      e.stopPropagation();
+      const dropdown = settingsDropdown.querySelector('.lmao-settings-dropdown-content');
+      dropdown.classList.toggle('show');
+    };
+
+    const dropdownContent = document.createElement('div');
+    dropdownContent.className = 'lmao-settings-dropdown-content';
 
     // Export button
     const exportBtn = document.createElement('button');
     exportBtn.textContent = 'Export Settings';
-    exportBtn.className = 'lmao-settings-button';
-    exportBtn.onclick = downloadExportData;
-    controlsDiv.appendChild(exportBtn);
+    exportBtn.className = 'lmao-settings-dropdown-item';
+    exportBtn.onclick = () => {
+      downloadExportData();
+      dropdownContent.classList.remove('show');
+    };
 
     // Import button and hidden file input
     const importBtn = document.createElement('button');
     importBtn.textContent = 'Import Settings';
-    importBtn.className = 'lmao-settings-button';
+    importBtn.className = 'lmao-settings-dropdown-item';
 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.json';
     fileInput.className = 'lmao-file-input';
-    fileInput.onchange = handleImportFile;
+    fileInput.onchange = (e) => {
+      handleImportFile(e);
+      dropdownContent.classList.remove('show');
+    };
 
     importBtn.onclick = () => fileInput.click();
 
-    controlsDiv.appendChild(importBtn);
-    controlsDiv.appendChild(fileInput);
+    dropdownContent.appendChild(exportBtn);
+    dropdownContent.appendChild(importBtn);
+    settingsDropdown.appendChild(settingsBtn);
+    settingsDropdown.appendChild(dropdownContent);
+    settingsDropdown.appendChild(fileInput);
 
-    return controlsDiv;
+    headerActions.appendChild(settingsDropdown);
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!settingsDropdown.contains(e.target)) {
+        dropdownContent.classList.remove('show');
+      }
+    });
+
+    return headerActions;
   }
 
   // --- PATCH TEASERS ---
@@ -1199,8 +1506,152 @@
     return document.querySelector('div[class*="likes_map__"]');
   }
 
+  function findHeading() {
+    return document.querySelector('h1[class*="headline_heading__"]');
+  }
+
   function findFullHeightContainer() {
     return document.querySelector('main');
+  }
+
+  /**
+   * Extracts action buttons from existing controls for relocation to header
+   * @param {HTMLElement} controlsContainer The current controls container
+   * @returns {Object} Object containing extracted button elements and file input
+   */
+  function extractActionButtons(controlsContainer) {
+    if (!controlsContainer) return { buttons: [], fileInput: null };
+
+    const extractedElements = {
+      clearButton: null,
+      exportButton: null,
+      importButton: null,
+      fileInput: null
+    };
+
+    // Find clear filters button
+    const clearBtn = controlsContainer.querySelector('.lmao-clear-filters-button');
+    if (clearBtn) {
+      extractedElements.clearButton = clearBtn.cloneNode(true);
+      // Preserve the onclick handler
+      extractedElements.clearButton.onclick = clearBtn.onclick;
+    }
+
+    // Find export button
+    const exportBtn = controlsContainer.querySelector(
+      'button[onclick*="downloadExportData"], button:contains("Export Settings")'
+    );
+    if (!exportBtn) {
+      // Alternative search by text content
+      const buttons = controlsContainer.querySelectorAll('button');
+      for (const btn of buttons) {
+        if (btn.textContent && btn.textContent.includes('Export Settings')) {
+          extractedElements.exportButton = btn.cloneNode(true);
+          extractedElements.exportButton.onclick = btn.onclick;
+          break;
+        }
+      }
+    } else {
+      extractedElements.exportButton = exportBtn.cloneNode(true);
+      extractedElements.exportButton.onclick = exportBtn.onclick;
+    }
+
+    // Find import button and associated file input
+    const importBtn = controlsContainer.querySelector('button:contains("Import Settings")');
+    if (!importBtn) {
+      // Alternative search by text content
+      const buttons = controlsContainer.querySelectorAll('button');
+      for (const btn of buttons) {
+        if (btn.textContent && btn.textContent.includes('Import Settings')) {
+          extractedElements.importButton = btn.cloneNode(true);
+          extractedElements.importButton.onclick = btn.onclick;
+          break;
+        }
+      }
+    } else {
+      extractedElements.importButton = importBtn.cloneNode(true);
+      extractedElements.importButton.onclick = importBtn.onclick;
+    }
+
+    // Find the hidden file input
+    const fileInput = controlsContainer.querySelector('.lmao-file-input');
+    if (fileInput) {
+      extractedElements.fileInput = fileInput.cloneNode(true);
+      extractedElements.fileInput.onchange = fileInput.onchange;
+    }
+
+    return extractedElements;
+  }
+
+  /**
+   * Creates a header container with proper positioning for action buttons
+   * @param {HTMLElement} headerArea The detected header area element
+   * @returns {HTMLElement} The created header controls container
+   */
+  function createHeaderContainer(headerArea) {
+    if (!headerArea) return null;
+
+    // Check if header container already exists
+    let headerContainer = document.querySelector('.lmao-header-controls');
+    if (headerContainer) {
+      return headerContainer;
+    }
+
+    // Create new header container
+    headerContainer = document.createElement('div');
+    headerContainer.className = 'lmao-header-controls';
+
+    // Ensure the header area has relative positioning for absolute positioning of controls
+    const headerAreaStyle = window.getComputedStyle(headerArea);
+    if (headerAreaStyle.position === 'static') {
+      headerArea.style.position = 'relative';
+    }
+
+    // Position the container in the top-right of the header area
+    headerContainer.style.position = 'absolute';
+    headerContainer.style.top = '1rem';
+    headerContainer.style.right = '1rem';
+    headerContainer.style.display = 'flex';
+    headerContainer.style.gap = '0.5rem';
+    headerContainer.style.alignItems = 'center';
+    headerContainer.style.zIndex = '1000';
+
+    // Append to header area
+    headerArea.appendChild(headerContainer);
+
+    return headerContainer;
+  }
+
+  /**
+   * Test function to verify header detection utilities work correctly
+   * This function can be called from browser console for debugging
+   */
+  function testHeaderDetectionUtilities() {
+    debugLog('Testing header detection utilities...');
+
+    // Test header area detection
+    const headerArea = findLikesMapDiv();
+    debugLog('Header area found:', headerArea);
+
+    if (headerArea) {
+      // Test header container creation
+      const headerContainer = createHeaderContainer(headerArea);
+      debugLog('Header container created:', headerContainer);
+
+      // Test button extraction (if controls exist)
+      const controlsDiv = document.querySelector('.lmao-controls');
+      if (controlsDiv) {
+        const extractedButtons = extractActionButtons(controlsDiv);
+        debugLog('Extracted buttons:', extractedButtons);
+      } else {
+        debugLog('No existing controls found for button extraction test');
+      }
+    }
+
+    return {
+      headerArea,
+      headerContainer: document.querySelector('.lmao-header-controls')
+    };
   }
 
   /**
@@ -1283,7 +1734,9 @@
       const likesMapDiv = grid.closest('div[class*="likes_map__"]');
       if (likesMapDiv) {
         likesMapDiv.style.display = 'flex';
-        likesMapDiv.marginTop = '1rem';
+        likesMapDiv.style.alignItems = 'flex-start';
+        likesMapDiv.style.gap = '0';
+        likesMapDiv.style.marginTop = '1rem';
       }
 
       const likesMapContainer = likesMapDiv.parentElement;
@@ -1291,7 +1744,7 @@
         likesMapContainer.classList.add('lmao-likes-container');
       }
 
-      AppState.controlsDiv = document.getElementById('liked-maps-folders-controls');
+      AppState.controlsDiv = document.getElementById('liked-maps-filter-controls');
 
       if (!AppState.controlsDiv) AppState.rebuildControls();
       grid.style.flexGrow = '1';
@@ -1336,18 +1789,18 @@
         if (!isActivePage()) {
           gridInitialized = false;
           // Remove controls panel if present
-          const controlsDiv = document.getElementById('liked-maps-folders-controls');
+          const controlsDiv = document.getElementById('liked-maps-filter-controls');
           if (controlsDiv && controlsDiv.parentNode) {
             controlsDiv.parentNode.removeChild(controlsDiv);
           }
           return;
         }
         const grid = document.querySelector('div[class*="grid_grid__"]');
-        debugLog('[LMAO] grid alive:', !!grid, 'initialized:', !!gridInitialized);
+        // debugLog('[LMAO] grid alive:', !!grid, 'initialized:', !!gridInitialized);
         if (!grid) {
           gridInitialized = false;
           // Keep retrying until grid appears (for SPA back/forward navigation)
-          debugLog('[LMAO] Grid not found. Retrying...');
+          // debugLog('[LMAO] Grid not found. Retrying...');
           setTimeout(tryInit, 100);
           return;
         }
@@ -1405,120 +1858,4 @@
   };
 
   waitForLoad();
-
-  /**
-   * Loads and updates region tags for all Learnable Meta maps at startup.
-   * Only fetches regions for maps not present in the cache.
-   *
-   * @param {string[]} learnableMetaMapIds - Array of GeoGuessr map IDs
-   * @returns {Promise<Object<string, string[]>>} Updated region cache
-   * @example
-   * const cache = await preloadMetaRegions(["abc123", "def456"]);
-   * // cache["abc123"] might be ["south america"]
-   */
-  /**
-   * Loads the region tag cache from localStorage.
-   * @returns {Object<string, {regions: string[]}>} The region cache object
-   */
-  function loadMetaRegionCache() {
-    try {
-      const raw = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_ADDITIONAL_MAP_INFO);
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      if (typeof parsed === 'object' && parsed !== null) return parsed;
-      return {};
-    } catch (e) {
-      debugLog('Failed to load meta region cache', e);
-      return {};
-    }
-  }
-
-  /**
-   * Saves the region tag cache to localStorage.
-   * @param {Object<string, {regions: string[]}>} cache - The region cache object
-   */
-  function saveMetaRegionCache(cache) {
-    try {
-      _unsafeWindow.localStorage.setItem(LOCALSTORAGE_ADDITIONAL_MAP_INFO, JSON.stringify(cache));
-    } catch (e) {
-      debugLog('Failed to save meta region cache', e);
-    }
-  }
-
-  /**
-   * Fetches region tags for a map from the Learnable Meta API.
-   * @param {string} mapId - The GeoGuessr map ID
-   * @returns {Promise<string[]>} Array of region tags (may be empty)
-   */
-  async function fetchMetaRegionsFromAPI(mapId) {
-    const url = `https://learnablemeta.com/api/maps?geoguessrId=${mapId}`;
-    debugLog('Fetching meta regions from API', url);
-    return new Promise((resolve, reject) => {
-      if (typeof _GM_xmlhttpRequest !== 'function') {
-        reject('GM_xmlhttpRequest is not available');
-        return;
-      }
-      _GM_xmlhttpRequest({
-        method: 'GET',
-        url,
-        onload: (response) => {
-          if (response.status === 200) {
-            try {
-              const responseData = JSON.parse(response.responseText);
-              const data = responseData[0] || {}; // should always be ONE item in the array
-              debugLog('Meta regions response', data);
-              if (Array.isArray(data.regions)) {
-                console.log('[LMAO]  !!!! isArray:', data.regions);
-                resolve(data.regions);
-              } else {
-                resolve([]);
-              }
-            } catch (e) {
-              debugLog('Failed to parse meta regions response', e);
-              resolve([]);
-            }
-          } else if (response.status === 404) {
-            resolve([]);
-          } else {
-            reject(`HTTP error! status: ${response.status}`);
-          }
-        },
-        onerror: () => {
-          reject('An error occurred while fetching meta regions');
-        }
-      });
-    });
-  }
-
-  /**
-   * Loads and updates region tags for all Learnable Meta maps at startup.
-   * Only fetches regions for maps not present in the cache.
-   *
-   * @param {string[]} learnableMetaMapIds - Array of GeoGuessr map IDs
-   * @returns {Promise<Object<string, {regions: string[]}>>} Updated region cache
-   * @example
-   * const cache = await preloadMetaRegions(["abc123", "def456"]);
-   * // cache["abc123"] might be { regions: ["south america"] }
-   */
-  async function preloadMetaRegions(learnableMetaMapIds) {
-    const cache = loadMetaRegionCache();
-    debugLog('Loaded meta region cache', cache);
-    let updated = false;
-    for (const mapId of learnableMetaMapIds) {
-      if (!cache.hasOwnProperty(mapId)) {
-        try {
-          const regions = await fetchMetaRegionsFromAPI(mapId);
-          if (regions?.length) {
-            debugLog('Found regions for', mapId, regions);
-            cache[mapId] = { regions };
-            updated = true;
-          }
-        } catch (e) {
-          debugLog('Failed to fetch regions for', mapId, e);
-        }
-      }
-    }
-    if (updated) saveMetaRegionCache(cache);
-    return cache;
-  }
 })();
