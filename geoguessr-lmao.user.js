@@ -297,12 +297,32 @@
     .lmao-settings-dropdown-item:last-child {
       border-radius: 0 0 0.5rem 0.5rem;
     }
-    /* Ensure header actions are properly aligned with h1 */
-    h1[class*="headline_heading__"] {
-      margin: 0;
+    .lmao-header-wrapper {
+      display: flex !important;
+      align-items: center !important;
+      width: 100% !important;
+      margin-bottom: 1rem !important;
+      position: relative;
     }
-    h1[class*="headline_heading__"] + .lmao-header-actions {
+    .lmao-header-wrapper h1[class*="headline_heading__"] {
+      margin: 0 !important;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+    .lmao-header-wrapper .lmao-header-actions {
       margin-left: auto;
+      flex-shrink: 0;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      z-index: 1;
+    }
+    .lmao-header-actions .lmao-header-button {
+      white-space: nowrap;
+      font-size: 0.875rem;
+      padding: 0.5rem 0.75rem;
     }
   `);
 
@@ -468,9 +488,12 @@
     },
 
     addHeaderActions() {
-      // Remove existing header actions if any
-      const existingActions = document.querySelector('.lmao-header-actions');
-      if (existingActions) existingActions.remove();
+      // Check if wrapper already exists
+      const existingWrapper = document.querySelector('.lmao-header-wrapper');
+      if (existingWrapper) {
+        console.log('[LMAO] Header wrapper already exists, skipping');
+        return;
+      }
 
       // Find the header area
       const heading = findHeading();
@@ -479,18 +502,41 @@
         return;
       }
 
+      // Check if heading is already inside a wrapper (safety check)
+      if (heading.closest('.lmao-header-wrapper')) {
+        console.log('[LMAO] Heading already in wrapper, skipping');
+        return;
+      }
+
       console.log('[LMAO] Found heading:', heading);
+
+      // Create wrapper div
+      const headerWrapper = document.createElement('div');
+      headerWrapper.className = 'lmao-header-wrapper';
+      headerWrapper.style.display = 'flex';
+      headerWrapper.style.alignItems = 'center';
+      headerWrapper.style.justifyContent = 'space-between';
+      headerWrapper.style.width = '100%';
+      headerWrapper.style.marginBottom = '1rem';
 
       // Create and add header actions
       const headerActions = createHeaderActions();
 
+      // Remove h1 from its current position and add to wrapper
       const parent = heading.parentElement;
       if (parent) {
-        console.log('[LMAO] Adding header actions to parent:', parent);
-        parent.style.display = 'flex';
-        parent.style.alignItems = 'center';
-        parent.style.justifyContent = 'space-between';
-        parent.insertBefore(headerActions, findLikesMapDiv());
+        console.log('[LMAO] Creating header wrapper');
+
+        // Insert wrapper where h1 was
+        parent.insertBefore(headerWrapper, heading);
+
+        // Move h1 into wrapper
+        headerWrapper.appendChild(heading);
+
+        // Add header actions to wrapper
+        headerWrapper.appendChild(headerActions);
+
+        console.log('[LMAO] Header wrapper created with h1 and actions');
       } else {
         console.log('[LMAO] No parent found for heading');
       }
