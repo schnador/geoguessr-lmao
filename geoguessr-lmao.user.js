@@ -321,8 +321,91 @@
     }
     .lmao-header-actions .lmao-header-button {
       white-space: nowrap;
-      font-size: 0.875rem;
-      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      padding: 0.5rem;
+      min-width: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Tooltip styling */
+    .lmao-tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    .lmao-tooltip .lmao-tooltip-text {
+      visibility: hidden;
+      width: 120px;
+      background-color: rgba(0, 0, 0, 0.9);
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px 8px;
+      position: absolute;
+      z-index: 1001;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -60px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .lmao-tooltip .lmao-tooltip-text::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
+    }
+    .lmao-tooltip:hover .lmao-tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* Icon styling for headings */
+    .lmao-controls-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      margin-bottom: 0.25rem;
+      font-size: var(--font-size-18);
+    }
+    .lmao-controls-header .lmao-icon {
+      font-size: 1rem;
+      opacity: 0.8;
+    }
+
+    /* Edit mode toggle in header */
+    .lmao-edit-toggle {
+      background: var(--ds-color-purple-100);
+      border: 1px solid var(--ds-color-white-20);
+      border-radius: 0.25rem;
+      color: white;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.5rem;
+      width: auto;
+      height: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .lmao-edit-toggle:hover {
+      background: var(--ds-color-purple-80);
+    }
+    .lmao-edit-toggle.active {
+      background: var(--ds-color-green-100);
+      border-color: var(--ds-color-green-60);
+    }
+    .lmao-edit-toggle.active:hover {
+      background: var(--ds-color-green-80);
     }
   `);
 
@@ -419,6 +502,11 @@
 
     updateEditMode(newMode) {
       this.editMode = newMode;
+      // Update edit toggle button appearance
+      const editToggleBtn = document.querySelector('.lmao-edit-toggle');
+      if (editToggleBtn) {
+        editToggleBtn.className = 'lmao-edit-toggle' + (newMode ? ' active' : '');
+      }
       this.rerender();
     },
 
@@ -967,6 +1055,20 @@
   }
 
   // --- UI HELPERS ---
+  function createTooltip(element, tooltipText) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'lmao-tooltip';
+
+    const tooltip = document.createElement('span');
+    tooltip.className = 'lmao-tooltip-text';
+    tooltip.textContent = tooltipText;
+
+    wrapper.appendChild(element);
+    wrapper.appendChild(tooltip);
+
+    return wrapper;
+  }
+
   function createCheckbox(labelText, checked, onChange, classList = null) {
     const label = document.createElement('label');
     const cb = document.createElement('input');
@@ -1092,14 +1194,25 @@
     const controlsDiv = document.createElement('div');
     controlsDiv.className = 'lmao-controls';
 
-    const header = (title) => {
+    const header = (title, icon) => {
       const s = document.createElement('strong');
-      s.textContent = title;
       s.className = 'lmao-controls-header';
+
+      if (icon) {
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'lmao-icon';
+        iconSpan.textContent = icon;
+        s.appendChild(iconSpan);
+      }
+
+      const textSpan = document.createElement('span');
+      textSpan.textContent = title;
+      s.appendChild(textSpan);
+
       return s;
     };
 
-    const headerFilterMode = header('Filtermode');
+    const headerFilterMode = header('Filter Mode', '⚙️');
     headerFilterMode.style.marginTop = '0.25rem';
     controlsDiv.appendChild(headerFilterMode);
     controlsDiv.appendChild(
@@ -1113,7 +1226,7 @@
         (newMode) => AppState.updateFilterMode(newMode)
       )
     );
-    controlsDiv.appendChild(header('Filter'));
+    controlsDiv.appendChild(header('Filter', '🔍'));
 
     // Show Learnable Meta checkbox (without header) if user has learnable meta maps
     const hasLearnableMeta = AppState.learnableMetaCache.size > 0;
@@ -1169,16 +1282,14 @@
         (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, api: c })
       )
     );
-    controlsDiv.appendChild(header('Tag Visibility'));
+    controlsDiv.appendChild(header('Tag Visibility', '👁️'));
     controlsDiv.appendChild(
       createTagVisibilityToggles(AppState.tagVisibility, (newVisibility) =>
         AppState.updateTagVisibility(newVisibility)
       )
     );
-    controlsDiv.appendChild(header('Edit Mode'));
-    controlsDiv.appendChild(
-      createCheckbox('Edit tags', AppState.editMode, (newMode) => AppState.updateEditMode(newMode))
-    );
+
+    // Edit Mode moved to header - removed from sidebar
 
     // Settings buttons moved to header - removed from sidebar
 
@@ -1189,12 +1300,25 @@
     const headerActions = document.createElement('div');
     headerActions.className = 'lmao-header-actions';
 
-    // Clear filters button
+    // Edit mode toggle button
+    const editToggleBtn = document.createElement('button');
+    editToggleBtn.innerHTML = '✏️'; // Pencil icon
+    editToggleBtn.className = 'lmao-edit-toggle' + (AppState.editMode ? ' active' : '');
+    editToggleBtn.onclick = () => {
+      const newMode = !AppState.editMode;
+      AppState.updateEditMode(newMode);
+      editToggleBtn.className = 'lmao-edit-toggle' + (newMode ? ' active' : '');
+    };
+    const editToggleWithTooltip = createTooltip(editToggleBtn, 'Toggle Edit Mode');
+    headerActions.appendChild(editToggleWithTooltip);
+
+    // Clear filters button with trash icon
     const clearFiltersBtn = document.createElement('button');
-    clearFiltersBtn.textContent = 'Clear Filters';
+    clearFiltersBtn.innerHTML = '🗑️'; // Trash icon
     clearFiltersBtn.className = 'lmao-header-button lmao-clear-button';
     clearFiltersBtn.onclick = () => AppState.updateSelectedTags([]);
-    headerActions.appendChild(clearFiltersBtn);
+    const clearFiltersWithTooltip = createTooltip(clearFiltersBtn, 'Clear All Filters');
+    headerActions.appendChild(clearFiltersWithTooltip);
 
     // Settings dropdown
     const settingsDropdown = document.createElement('div');
@@ -1208,6 +1332,8 @@
       const dropdown = settingsDropdown.querySelector('.lmao-settings-dropdown-content');
       dropdown.classList.toggle('show');
     };
+    const settingsBtnWithTooltip = createTooltip(settingsBtn, 'Settings');
+    settingsDropdown.appendChild(settingsBtnWithTooltip);
 
     const dropdownContent = document.createElement('div');
     dropdownContent.className = 'lmao-settings-dropdown-content';
@@ -1239,7 +1365,6 @@
 
     dropdownContent.appendChild(exportBtn);
     dropdownContent.appendChild(importBtn);
-    settingsDropdown.appendChild(settingsBtn);
     settingsDropdown.appendChild(dropdownContent);
     settingsDropdown.appendChild(fileInput);
 
