@@ -112,6 +112,7 @@
       top: 2rem;
       max-height: calc(100vh - 4rem);
       overflow-y: auto;
+      overflow-x: visible;
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       margin-right: 1rem;
@@ -334,41 +335,28 @@
       position: relative;
       display: inline-block;
     }
-    .lmao-tooltip .lmao-tooltip-text {
+    .lmao-tooltip-text {
       visibility: hidden;
-      width: 120px;
-      background-color: rgba(0, 0, 0, 0.9);
-      color: #fff;
+      width: auto;
+      min-width: 120px;
+      max-width: 250px;
+      background-color: rgba(0, 0, 0, 0.9) !important;
+      color: #fff !important;
       text-align: center;
       border-radius: 6px;
-      padding: 5px 8px;
-      position: absolute;
-      z-index: 1001;
-      bottom: 125%;
-      left: 50%;
-      margin-left: -60px;
+      padding: 8px 12px;
+      position: fixed;
+      z-index: 10001;
       opacity: 0;
       transition: opacity 0.3s;
-      font-size: 0.75rem;
-      white-space: nowrap;
+      font-size: 0.75rem !important;
+      white-space: pre-wrap;
+      word-wrap: break-word;
       pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      line-height: 1.4;
+      font-family: var(--default-font) !important;
     }
-    .lmao-tooltip .lmao-tooltip-text::after {
-      content: "";
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      margin-left: -5px;
-      border-width: 5px;
-      border-style: solid;
-      border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
-    }
-    .lmao-tooltip:hover .lmao-tooltip-text {
-      visibility: visible;
-      opacity: 1;
-    }
-
-    /* Icon styling for headings */
     .lmao-controls-header {
       display: flex;
       align-items: center;
@@ -381,8 +369,6 @@
       font-size: 1rem;
       opacity: 0.8;
     }
-
-    /* Edit mode toggle in header */
     .lmao-edit-toggle {
       background: var(--ds-color-purple-100);
       border: 1px solid var(--ds-color-white-20);
@@ -401,11 +387,39 @@
       background: var(--ds-color-purple-80);
     }
     .lmao-edit-toggle.active {
-      background: var(--ds-color-green-100);
-      border-color: var(--ds-color-green-60);
+      background: var(--ds-color-green-80);
+      border-color: var(--ds-color-green-70);
     }
     .lmao-edit-toggle.active:hover {
-      background: var(--ds-color-green-80);
+      background: var(--ds-color-green-70);
+    }
+    .lmao-tooltip label {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      transition: background-color 0.2s;
+    }
+    .lmao-tooltip label:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    .lmao-small-clear-button {
+      background: var(--ds-color-red-100);
+      border: 1px solid var(--ds-color-white-20);
+      border-radius: 0.25rem;
+      color: white;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.375rem;
+      min-width: auto;
+      height: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 0.5rem;
+    }
+    .lmao-small-clear-button:hover {
+      background: var(--ds-color-red-80);
     }
   `);
 
@@ -1055,7 +1069,7 @@
   }
 
   // --- UI HELPERS ---
-  function createTooltip(element, tooltipText) {
+  function createTooltip(element, tooltipText, offSet = false) {
     const wrapper = document.createElement('div');
     wrapper.className = 'lmao-tooltip';
 
@@ -1063,8 +1077,58 @@
     tooltip.className = 'lmao-tooltip-text';
     tooltip.textContent = tooltipText;
 
+    let showTimeout, hideTimeout;
+
+    const showTooltip = () => {
+      clearTimeout(hideTimeout);
+      showTimeout = setTimeout(() => {
+        const rect = wrapper.getBoundingClientRect();
+
+        // Position above the element by default
+        let top = rect.top - 50 - 10; // Approximate tooltip height
+        let left = rect.left + rect.width / 2;
+
+        if (offSet) {
+          top += 20;
+        }
+
+        // If tooltip would go above viewport, show below instead
+        if (top < 10) {
+          top = rect.bottom + 10;
+        }
+
+        // Adjust horizontal position if tooltip would go off screen
+        const tooltipWidth = 200; // Approximate width
+        if (left - tooltipWidth / 2 < 10) {
+          left = tooltipWidth / 2 + 10;
+        }
+        if (left + tooltipWidth / 2 > window.innerWidth - 10) {
+          left = window.innerWidth - tooltipWidth / 2 - 10;
+        }
+
+        tooltip.style.position = 'fixed';
+        tooltip.style.top = top + 'px';
+        tooltip.style.left = left + 'px';
+        tooltip.style.transform = 'translateX(-50%)';
+        tooltip.style.zIndex = offSet ? '99999' : '10001';
+        tooltip.style.visibility = 'visible';
+        tooltip.style.opacity = '1';
+      }, 200);
+    };
+
+    const hideTooltip = () => {
+      clearTimeout(showTimeout);
+      hideTimeout = setTimeout(() => {
+        tooltip.style.visibility = 'hidden';
+        tooltip.style.opacity = '0';
+      }, 100);
+    };
+
+    wrapper.addEventListener('mouseenter', showTooltip);
+    wrapper.addEventListener('mouseleave', hideTooltip);
+
     wrapper.appendChild(element);
-    wrapper.appendChild(tooltip);
+    document.body.appendChild(tooltip); // Always append to body to avoid clipping
 
     return wrapper;
   }
@@ -1099,7 +1163,15 @@
       label.appendChild(radio);
       label.appendChild(document.createTextNode(' ' + opt.label));
       label.style.marginRight = '1em';
-      div.appendChild(label);
+      label.style.cursor = 'pointer';
+
+      // Add tooltip if provided
+      if (opt.tooltip) {
+        const labelWithTooltip = createTooltip(label, opt.tooltip);
+        div.appendChild(labelWithTooltip);
+      } else {
+        div.appendChild(label);
+      }
     });
 
     return div;
@@ -1194,9 +1266,17 @@
     const controlsDiv = document.createElement('div');
     controlsDiv.className = 'lmao-controls';
 
-    const header = (title, icon) => {
+    const header = (title, icon, button = null) => {
+      const container = document.createElement('div');
+      container.style.display = 'flex';
+      container.style.alignItems = 'center';
+      container.style.justifyContent = 'space-between';
+      container.style.marginTop = '0.75rem';
+      container.style.marginBottom = '0.25rem';
+
       const s = document.createElement('strong');
       s.className = 'lmao-controls-header';
+      s.style.margin = '0';
 
       if (icon) {
         const iconSpan = document.createElement('span');
@@ -1209,7 +1289,13 @@
       textSpan.textContent = title;
       s.appendChild(textSpan);
 
-      return s;
+      container.appendChild(s);
+
+      if (button) {
+        container.appendChild(button);
+      }
+
+      return container;
     };
 
     const headerFilterMode = header('Filter Mode', '⚙️');
@@ -1218,15 +1304,31 @@
     controlsDiv.appendChild(
       createRadioGroup(
         [
-          { value: 'ALL', label: 'All tags' },
-          { value: 'ANY', label: 'Any tag' }
+          {
+            value: 'ALL',
+            label: 'All tags',
+            tooltip: 'Show maps that have ALL selected tags\n(stricter filtering - fewer results)'
+          },
+          {
+            value: 'ANY',
+            label: 'Any tag',
+            tooltip:
+              'Show maps that have ANY of the selected tags\n(broader results - more maps shown)'
+          }
         ],
         AppState.filterMode,
         'lmao-filter-mode',
         (newMode) => AppState.updateFilterMode(newMode)
       )
     );
-    controlsDiv.appendChild(header('Filter', '🔍'));
+    // Create small clear button for Filter heading
+    const smallClearBtn = document.createElement('button');
+    smallClearBtn.innerHTML = '🗑️';
+    smallClearBtn.className = 'lmao-small-clear-button';
+    smallClearBtn.onclick = () => AppState.updateSelectedTags([]);
+    const smallClearWithTooltip = createTooltip(smallClearBtn, 'Clear All Filters', true);
+
+    controlsDiv.appendChild(header('Filter', '🔍', smallClearWithTooltip));
 
     // Show Learnable Meta checkbox (without header) if user has learnable meta maps
     const hasLearnableMeta = AppState.learnableMetaCache.size > 0;
@@ -1289,16 +1391,20 @@
       )
     );
 
-    // Edit Mode moved to header - removed from sidebar
-
-    // Settings buttons moved to header - removed from sidebar
-
     return controlsDiv;
   }
 
   function createHeaderActions() {
     const headerActions = document.createElement('div');
     headerActions.className = 'lmao-header-actions';
+
+    // Clear filters button with trash icon
+    const clearFiltersBtn = document.createElement('button');
+    clearFiltersBtn.innerHTML = '🗑️'; // Trash icon
+    clearFiltersBtn.className = 'lmao-header-button lmao-clear-button';
+    clearFiltersBtn.onclick = () => AppState.updateSelectedTags([]);
+    const clearFiltersWithTooltip = createTooltip(clearFiltersBtn, 'Clear All Filters', true);
+    headerActions.appendChild(clearFiltersWithTooltip);
 
     // Edit mode toggle button
     const editToggleBtn = document.createElement('button');
@@ -1309,16 +1415,8 @@
       AppState.updateEditMode(newMode);
       editToggleBtn.className = 'lmao-edit-toggle' + (newMode ? ' active' : '');
     };
-    const editToggleWithTooltip = createTooltip(editToggleBtn, 'Toggle Edit Mode');
+    const editToggleWithTooltip = createTooltip(editToggleBtn, 'Toggle Edit Mode', true);
     headerActions.appendChild(editToggleWithTooltip);
-
-    // Clear filters button with trash icon
-    const clearFiltersBtn = document.createElement('button');
-    clearFiltersBtn.innerHTML = '🗑️'; // Trash icon
-    clearFiltersBtn.className = 'lmao-header-button lmao-clear-button';
-    clearFiltersBtn.onclick = () => AppState.updateSelectedTags([]);
-    const clearFiltersWithTooltip = createTooltip(clearFiltersBtn, 'Clear All Filters');
-    headerActions.appendChild(clearFiltersWithTooltip);
 
     // Settings dropdown
     const settingsDropdown = document.createElement('div');
@@ -1332,7 +1430,7 @@
       const dropdown = settingsDropdown.querySelector('.lmao-settings-dropdown-content');
       dropdown.classList.toggle('show');
     };
-    const settingsBtnWithTooltip = createTooltip(settingsBtn, 'Settings');
+    const settingsBtnWithTooltip = createTooltip(settingsBtn, 'Settings', true);
     settingsDropdown.appendChild(settingsBtnWithTooltip);
 
     const dropdownContent = document.createElement('div');
