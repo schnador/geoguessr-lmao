@@ -55,16 +55,16 @@
     }
     .lmao-map-teaser_tag.user-tag {
       color: #fff;
-      border-color: #ffb347;
-      background: rgba(255,179,71,0.15);
+      border-color: var(--ds-color-blue-80);
+      background: color-mix(in srgb, var(--ds-color-blue-50) 30%, transparent);
     }
     .lmao-map-teaser_tag.lmao-learnable-meta {
-      border-color: var(--ds-color-white-40);
-      background:rgba(76, 175, 80, 0.30);
+      border-color: var(--ds-color-green-80);
+      background: color-mix(in srgb, var(--ds-color-green-50) 30%, transparent);
     }
     .lmao-map-teaser_tag.lmao-region {
       border-color: var(--ds-color-white-40);
-      background:rgba(108, 185, 40, 0.30);
+      background: color-mix(in srgb, var(--ds-color-green-80) 30%, transparent);
     }
     .lmao-tag-remove-btn {
       margin-left: 0.2em;
@@ -241,7 +241,7 @@
       background: var(--ds-color-purple-80);
     }
     .lmao-header-button.lmao-clear-button {
-      background: var(--ds-color-red-100);
+      background: var(--ds-color-purple-100);
     }
     .lmao-header-button.lmao-clear-button:hover {
       background: var(--ds-color-red-80);
@@ -1781,146 +1781,6 @@
 
   function findFullHeightContainer() {
     return document.querySelector('main');
-  }
-
-  /**
-   * Extracts action buttons from existing controls for relocation to header
-   * @param {HTMLElement} controlsContainer The current controls container
-   * @returns {Object} Object containing extracted button elements and file input
-   */
-  function extractActionButtons(controlsContainer) {
-    if (!controlsContainer) return { buttons: [], fileInput: null };
-
-    const extractedElements = {
-      clearButton: null,
-      exportButton: null,
-      importButton: null,
-      fileInput: null
-    };
-
-    // Find clear filters button
-    const clearBtn = controlsContainer.querySelector('.lmao-clear-filters-button');
-    if (clearBtn) {
-      extractedElements.clearButton = clearBtn.cloneNode(true);
-      // Preserve the onclick handler
-      extractedElements.clearButton.onclick = clearBtn.onclick;
-    }
-
-    // Find export button
-    const exportBtn = controlsContainer.querySelector(
-      'button[onclick*="downloadExportData"], button:contains("Export Settings")'
-    );
-    if (!exportBtn) {
-      // Alternative search by text content
-      const buttons = controlsContainer.querySelectorAll('button');
-      for (const btn of buttons) {
-        if (btn.textContent && btn.textContent.includes('Export Settings')) {
-          extractedElements.exportButton = btn.cloneNode(true);
-          extractedElements.exportButton.onclick = btn.onclick;
-          break;
-        }
-      }
-    } else {
-      extractedElements.exportButton = exportBtn.cloneNode(true);
-      extractedElements.exportButton.onclick = exportBtn.onclick;
-    }
-
-    // Find import button and associated file input
-    const importBtn = controlsContainer.querySelector('button:contains("Import Settings")');
-    if (!importBtn) {
-      // Alternative search by text content
-      const buttons = controlsContainer.querySelectorAll('button');
-      for (const btn of buttons) {
-        if (btn.textContent && btn.textContent.includes('Import Settings')) {
-          extractedElements.importButton = btn.cloneNode(true);
-          extractedElements.importButton.onclick = btn.onclick;
-          break;
-        }
-      }
-    } else {
-      extractedElements.importButton = importBtn.cloneNode(true);
-      extractedElements.importButton.onclick = importBtn.onclick;
-    }
-
-    // Find the hidden file input
-    const fileInput = controlsContainer.querySelector('.lmao-file-input');
-    if (fileInput) {
-      extractedElements.fileInput = fileInput.cloneNode(true);
-      extractedElements.fileInput.onchange = fileInput.onchange;
-    }
-
-    return extractedElements;
-  }
-
-  /**
-   * Creates a header container with proper positioning for action buttons
-   * @param {HTMLElement} headerArea The detected header area element
-   * @returns {HTMLElement} The created header controls container
-   */
-  function createHeaderContainer(headerArea) {
-    if (!headerArea) return null;
-
-    // Check if header container already exists
-    let headerContainer = document.querySelector('.lmao-header-controls');
-    if (headerContainer) {
-      return headerContainer;
-    }
-
-    // Create new header container
-    headerContainer = document.createElement('div');
-    headerContainer.className = 'lmao-header-controls';
-
-    // Ensure the header area has relative positioning for absolute positioning of controls
-    const headerAreaStyle = window.getComputedStyle(headerArea);
-    if (headerAreaStyle.position === 'static') {
-      headerArea.style.position = 'relative';
-    }
-
-    // Position the container in the top-right of the header area
-    headerContainer.style.position = 'absolute';
-    headerContainer.style.top = '1rem';
-    headerContainer.style.right = '1rem';
-    headerContainer.style.display = 'flex';
-    headerContainer.style.gap = '0.5rem';
-    headerContainer.style.alignItems = 'center';
-    headerContainer.style.zIndex = '1000';
-
-    // Append to header area
-    headerArea.appendChild(headerContainer);
-
-    return headerContainer;
-  }
-
-  /**
-   * Test function to verify header detection utilities work correctly
-   * This function can be called from browser console for debugging
-   */
-  function testHeaderDetectionUtilities() {
-    debugLog('Testing header detection utilities...');
-
-    // Test header area detection
-    const headerArea = findLikesMapDiv();
-    debugLog('Header area found:', headerArea);
-
-    if (headerArea) {
-      // Test header container creation
-      const headerContainer = createHeaderContainer(headerArea);
-      debugLog('Header container created:', headerContainer);
-
-      // Test button extraction (if controls exist)
-      const controlsDiv = document.querySelector('.lmao-controls');
-      if (controlsDiv) {
-        const extractedButtons = extractActionButtons(controlsDiv);
-        debugLog('Extracted buttons:', extractedButtons);
-      } else {
-        debugLog('No existing controls found for button extraction test');
-      }
-    }
-
-    return {
-      headerArea,
-      headerContainer: document.querySelector('.lmao-header-controls')
-    };
   }
 
   /**

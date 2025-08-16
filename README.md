@@ -15,7 +15,7 @@ A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr
 - **Tagging:** Add, edit, and filter custom tags for your liked maps.
 - **Filtering:** Easily filter maps by their tags - Default tags and custom tags.
 - **De-clutter:** You can now hide the barely useful default tags provided by geoguessr. More space for custom tags 😎
-- **Learnable Meta Integration:** Instantly see which maps are supported by [Learnable Meta](https://learnablemeta.com/).
+- **Learnable Meta Integration:** Instantly see which maps are supported by [Learnable Meta](https://learnablemeta.com/). Regions are also tagged for you.
 
 Unfiltered:
 
@@ -40,32 +40,43 @@ Filtered:
 
 ## Usage
 
+### General Usage
+
 1. Visit your [Liked Maps page](https://www.geoguessr.com/me/likes) on GeoGuessr.
 2. Add tags
 
-   - Enable "Edit tags" (bottom of the controls panel)
+   - Enable "Editmode ✏️"
    - Add a tag by either entering a text or selecting one from the list of available tags:
      ![Add a tag](https://github.com/schnador/geoguessr-lmao/raw/main/img/add-tag.png)
    - Press enter to confirm
-   - Disable "Edit tags" when you are done
+   - Disable "Editmode ✏️" when you are done
 
 3. Use the control panel to:
    - Filter maps by tags
      - "Any"-Mode: Shows maps, which contain ANY of the selected tags.
      - "All"-Mode: Shows maps, which contains ALL of the selected tags.
-   - Toggle visibility of user, Learnable Meta, and default tags
-   - Learnable Meta maps are automatically recognized and tagged!
+   - Toggle visibility of user, Learnable Meta, regions and default tags
+   - Learnable Meta maps are automatically recognized and tagged along with their regions!
+
+### Clearing the filters
+
+To clear the current filters, just click the 🗑️ button
+
+### Exporting & Importing your tags (+ Backups)
+
+If you play geoguessr on different devices or browsers, you can always use the export and import buttons in ⚙️
+
+This simply downloads a json file which you can then import again.
+
+This is also useful for making backups.
 
 ---
 
 ## Future plans
 
-- Automatically add Learnable Meta category tags from https://learnablemeta.com/maps
-  - for example: "World", "Europe", "Asia", etc..
 - Rework layout & styling for better usability
+  - "Search" Panel!
 - Create video to show installation and usage
-- Persist filterstate
-- Delete all filters button
 - Integrate with available scripts that work on the liked maps page
 - Filter favourites??
 
@@ -90,6 +101,8 @@ All tags and settings are fetched from their API and stored locally in your brow
 
 The Learnable Meta integration works by checking maps which don't have a localStorage entry via the Learnable Meta API, just as the Learnable Meta userscript would.
 This information is stored locally, and never refetched unless you clean your localStorage to keep the API calls to a minimum.
+
+Additionally, the regions for Learnable Meta maps (World, Europe, Asia, etc..) are also fetched from the Learnable Meta API.
 
 I will do the best to react quickly to any changes in the Learnable Meta userscript to keep the integration seamless.
 
