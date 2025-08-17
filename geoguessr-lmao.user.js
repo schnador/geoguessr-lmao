@@ -1535,18 +1535,45 @@
   }
 
   // --- UI HELPERS ---
+
+  // Global tooltip element - only one tooltip exists at a time
+  let _globalTooltipElement = null;
+
+  // Ensure tooltip is hidden when page is unloaded
+  window.addEventListener('beforeunload', () => {
+    if (_globalTooltipElement) {
+      _globalTooltipElement.style.visibility = 'hidden';
+      _globalTooltipElement.style.opacity = '0';
+    }
+  });
+
   function createTooltip(element, tooltipText, offSet = false) {
     const wrapper = document.createElement('div');
     wrapper.className = 'lmao-tooltip';
 
-    const tooltip = document.createElement('span');
-    tooltip.className = 'lmao-tooltip-text';
-    tooltip.textContent = tooltipText;
+    // Ensure global tooltip element exists
+    if (!_globalTooltipElement) {
+      _globalTooltipElement = document.createElement('span');
+      _globalTooltipElement.className = 'lmao-tooltip-text';
+      _globalTooltipElement.style.visibility = 'hidden';
+      _globalTooltipElement.style.opacity = '0';
+      document.body.appendChild(_globalTooltipElement);
+      debugLog(LogLevel.DEBUG, 'Created global tooltip element');
+    }
 
     let showTimeout, hideTimeout;
 
     const showTooltip = () => {
+      debugLog(LogLevel.TRACE, `Showing tooltip: ${tooltipText}`);
       clearTimeout(hideTimeout);
+
+      // Update tooltip text
+      _globalTooltipElement.textContent = tooltipText;
+
+      // Immediately hide any existing tooltip to prevent overlapping
+      _globalTooltipElement.style.visibility = 'hidden';
+      _globalTooltipElement.style.opacity = '0';
+
       showTimeout = setTimeout(() => {
         const rect = wrapper.getBoundingClientRect();
 
@@ -1572,21 +1599,25 @@
           left = window.innerWidth - tooltipWidth / 2 - 10;
         }
 
-        tooltip.style.position = 'fixed';
-        tooltip.style.top = top + 'px';
-        tooltip.style.left = left + 'px';
-        tooltip.style.transform = 'translateX(-50%)';
-        tooltip.style.zIndex = offSet ? '99999' : '10001';
-        tooltip.style.visibility = 'visible';
-        tooltip.style.opacity = '1';
+        _globalTooltipElement.style.position = 'fixed';
+        _globalTooltipElement.style.top = top + 'px';
+        _globalTooltipElement.style.left = left + 'px';
+        _globalTooltipElement.style.transform = 'translateX(-50%)';
+        _globalTooltipElement.style.zIndex = offSet ? '99999' : '10001';
+        _globalTooltipElement.style.visibility = 'visible';
+        _globalTooltipElement.style.opacity = '1';
+        debugLog(LogLevel.TRACE, `Tooltip now visible: ${tooltipText}`);
       }, 200);
     };
 
     const hideTooltip = () => {
+      debugLog(LogLevel.TRACE, `Hiding tooltip: ${tooltipText}`);
       clearTimeout(showTimeout);
+
       hideTimeout = setTimeout(() => {
-        tooltip.style.visibility = 'hidden';
-        tooltip.style.opacity = '0';
+        _globalTooltipElement.style.visibility = 'hidden';
+        _globalTooltipElement.style.opacity = '0';
+        debugLog(LogLevel.TRACE, `Tooltip now hidden: ${tooltipText}`);
       }, 100);
     };
 
@@ -1594,7 +1625,6 @@
     wrapper.addEventListener('mouseleave', hideTooltip);
 
     wrapper.appendChild(element);
-    document.body.appendChild(tooltip); // Always append to body to avoid clipping
 
     return wrapper;
   }
@@ -2763,6 +2793,7 @@
   // --- MAIN ---
   async function init() {
     debugLog(LogLevel.INFO, 'Starting LMAO initialization');
+
     showLoadingIndicator();
     try {
       const userTags = loadUserTags();
@@ -2906,6 +2937,7 @@
         if (!gridInitialized) {
           gridInitialized = true;
           debugLog(LogLevel.INFO, 'Grid found, initializing LMAO');
+
           init();
 
           saveDevConfig();
