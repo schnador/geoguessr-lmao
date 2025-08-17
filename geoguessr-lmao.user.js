@@ -161,7 +161,7 @@
       opacity: 1 !important;
     }
     .lmao-tag-chip.selected {
-      border-color: rgba(255, 255, 255, 0.3);
+      border-color: rgb(255, 255, 255);
       box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
     }
     .lmao-tag-chip:not(.selected) {
@@ -169,22 +169,18 @@
     }
     .lmao-tag-chip.user-tag {
       background: color-mix(in srgb, var(--ds-color-blue-50) 50%, transparent);
-      border-color: var(--ds-color-blue-80);
       color: #fff;
     }
     .lmao-tag-chip.api-tag {
       background: rgba(0,0,0,0.2);
-      border-color: var(--ds-color-white-40);
       color: var(--ds-color-white-60);
     }
     .lmao-tag-chip.meta-tag {
       background: color-mix(in srgb, var(--ds-color-green-70) 50%, transparent);
-      border-color: var(--ds-color-green-80);
       color: #fff;
     }
     .lmao-tag-chip.region-tag {
       background: color-mix(in srgb, var(--ds-color-green-80) 50%, transparent);
-      border-color: var(--ds-color-green-80);
       color: #fff;
     }
     .lmao-tag-chip.dragging {
@@ -1920,8 +1916,8 @@
     chip.setAttribute('data-tag', tag);
     chip.setAttribute('data-category', category);
 
-    // Add drag handle in edit mode
-    if (AppState.editMode) {
+    // Add drag handle in edit mode, but not for learnable meta tag - currently the only in its category
+    if (AppState.editMode && category !== TagCategory.LEARNABLE_META) {
       const handle = document.createElement('span');
       handle.className = 'lmao-drag-handle';
       handle.textContent = '⋮';
@@ -2217,20 +2213,20 @@
 
     controlsDiv.appendChild(header('Filter', '🔍', smallClearWithTooltip));
 
-    // Show Learnable Meta checkbox (without header) if user has learnable meta maps
+    // Show Learnable Meta chip (without header) if user has learnable meta maps
     const hasLearnableMeta = AppState.learnableMetaCache.size > 0;
     if (hasLearnableMeta) {
-      const learnableMetaCheckbox = createCheckbox(
+      const learnableMetaChip = createTagChip(
         'Learnable Meta',
         AppState.selectedTags?.learnableMeta || false,
-        (checked) => {
-          AppState.selectedTags.learnableMeta = checked;
+        TagCategory.LEARNABLE_META,
+        (selected) => {
+          AppState.selectedTags.learnableMeta = selected;
           AppState.updateSelectedTags(AppState.selectedTags);
-        },
-        ['lmao-no-left-margin']
+        }
       );
-      learnableMetaCheckbox.className = 'lmao-default-bottom-margin';
-      controlsDiv.appendChild(learnableMetaCheckbox);
+      learnableMetaChip.classList.add('lmao-default-bottom-margin');
+      controlsDiv.appendChild(learnableMetaChip);
     }
 
     controlsDiv.appendChild(
