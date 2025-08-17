@@ -45,13 +45,13 @@ Filtered:
 1. Visit your [Liked Maps page](https://www.geoguessr.com/me/likes) on GeoGuessr.
 2. Add tags
 
-   - Enable "Editmode ✏️"
+   - Enable Editmode (✏️)
    - Add a tag by either entering a text or selecting one from the list of available tags:
      ![Add a tag](https://github.com/schnador/geoguessr-lmao/raw/main/img/add-tag.png)
    - Press enter to confirm
-   - Disable "Editmode ✏️" when you are done
+   - Disable Editmode (✏️) when you are done
 
-3. Use the control panel to:
+3. Use the sidebar to:
    - Filter maps by tags
      - "Any"-Mode: Shows maps, which contain ANY of the selected tags.
      - "All"-Mode: Shows maps, which contains ALL of the selected tags.
@@ -61,6 +61,20 @@ Filtered:
 ### Clearing the filters
 
 To clear the current filters, just click the 🗑️ button
+
+### Reordering your tags
+
+You can easily reorder your tags in the sidebar via drag and drop when in editmode (✏️).
+
+### Searchpanel
+
+Use the searchpanel to search text in your liked maps.
+You can use the button left of the searchpanel to restrict your search to parts of the following categories:
+
+- Map name
+- Map description
+- Map creator name
+- Tags
 
 ### Exporting & Importing your tags (+ Backups)
 
@@ -74,10 +88,10 @@ This is also useful for making backups.
 
 ## Future plans
 
-- Rework layout & styling for better usability
-  - "Search" Panel!
+- Add a grid-view instead of the default map teasers
 - Create video to show installation and usage
 - Integrate with available scripts that work on the liked maps page
+- Keybinds
 - Filter favourites??
 
 **Feel free to add suggestions under ["Issues"](https://github.com/schnador/geoguessr-lmao/issues/new) with the tag "enhancement"**

@@ -641,6 +641,33 @@
     ERROR: 'ERROR'
   };
 
+  const TagCategory = {
+    USER: 'user',
+    REGION: 'region',
+    API: 'api',
+    LEARNABLE_META: 'learnableMeta'
+  };
+
+  /**
+   * Maps category string to TagCategory constant
+   * @param {string} category - Category string ('user', 'region', 'api', 'learnableMeta')
+   * @returns {string} TagCategory constant
+   */
+  function getTagCategory(category) {
+    switch (category) {
+      case 'user':
+        return TagCategory.USER;
+      case 'region':
+        return TagCategory.REGION;
+      case 'api':
+        return TagCategory.API;
+      case 'learnableMeta':
+        return TagCategory.LEARNABLE_META;
+      default:
+        return TagCategory.USER;
+    }
+  }
+
   /**
    * Gets the current log level from CONFIG object.
    * @returns {number} Current log level
@@ -1449,26 +1476,26 @@
   /**
    * Adds a tag to the selected tags in the specified category
    * @param {string} tag - Tag name to add
-   * @param {string} category - Category to add to ('user', 'region', 'api', 'learnableMeta')
+   * @param {string} category - Category to add to (TagCategory.USER, TagCategory.REGION, TagCategory.API, TagCategory.LEARNABLE_META)
    */
   function addSelectedTag(tag, category) {
     switch (category) {
-      case 'user':
+      case TagCategory.USER:
         if (!AppState.selectedTags.userTags.includes(tag)) {
           AppState.selectedTags.userTags.push(tag);
         }
         break;
-      case 'region':
+      case TagCategory.REGION:
         if (!AppState.selectedTags.regionTags.includes(tag)) {
           AppState.selectedTags.regionTags.push(tag);
         }
         break;
-      case 'api':
+      case TagCategory.API:
         if (!AppState.selectedTags.apiTags.includes(tag)) {
           AppState.selectedTags.apiTags.push(tag);
         }
         break;
-      case 'learnableMeta':
+      case TagCategory.LEARNABLE_META:
         AppState.selectedTags.learnableMeta = true;
         break;
     }
@@ -1487,29 +1514,29 @@
   /**
    * Removes a tag from the selected tags in the specified category
    * @param {string} tag - Tag name to remove
-   * @param {string} category - Category to remove from ('user', 'region', 'api', 'learnableMeta')
+   * @param {string} category - Category to remove from (TagCategory.USER, TagCategory.REGION, TagCategory.API, TagCategory.LEARNABLE_META)
    */
   function removeSelectedTag(tag, category) {
     switch (category) {
-      case 'user':
+      case TagCategory.USER:
         const userIndex = AppState.selectedTags.userTags.indexOf(tag);
         if (userIndex > -1) {
           AppState.selectedTags.userTags.splice(userIndex, 1);
         }
         break;
-      case 'region':
+      case TagCategory.REGION:
         const regionIndex = AppState.selectedTags.regionTags.indexOf(tag);
         if (regionIndex > -1) {
           AppState.selectedTags.regionTags.splice(regionIndex, 1);
         }
         break;
-      case 'api':
+      case TagCategory.API:
         const apiIndex = AppState.selectedTags.apiTags.indexOf(tag);
         if (apiIndex > -1) {
           AppState.selectedTags.apiTags.splice(apiIndex, 1);
         }
         break;
-      case 'learnableMeta':
+      case TagCategory.LEARNABLE_META:
         AppState.selectedTags.learnableMeta = false;
         break;
     }
@@ -1525,7 +1552,7 @@
   /**
    * Sorts tags according to saved order, putting unordered tags at the end
    * @param {string[]} tags - Array of tag names
-   * @param {string} category - Category key ('user', 'api', 'region')
+   * @param {string} category - Category key (TagCategory.USER, TagCategory.API, TagCategory.REGION)
    * @returns {string[]} Sorted array of tags
    */
   function sortTagsByOrder(tags, category) {
@@ -1834,9 +1861,9 @@
     sortedTags.forEach((tag, index) => {
       const chip = createTagChip(tag, isTagSelected(tag, category), category, (selected) => {
         if (selected) {
-          addSelectedTag(tag, category);
+          addSelectedTag(tag, getTagCategory(category));
         } else {
-          removeSelectedTag(tag, category);
+          removeSelectedTag(tag, getTagCategory(category));
         }
         onChange(AppState.selectedTags);
       });
@@ -1845,7 +1872,7 @@
       if (AppState.editMode) {
         makeDraggable(chip, category, index, () => {
           // Rebuild the group after reordering
-          const newSortedTags = sortTagsByOrder(tags, category);
+          const newSortedTags = sortTagsByOrder(tags, getTagCategory(category));
           rebuildTagGroup(tagsDiv, newSortedTags, selectedTags, onChange, category);
         });
       }
@@ -1896,13 +1923,13 @@
    */
   function getTagChipClass(category) {
     switch (category) {
-      case 'user':
+      case TagCategory.USER:
         return 'user-tag';
-      case 'api':
+      case TagCategory.API:
         return 'api-tag';
-      case 'meta':
+      case TagCategory.LEARNABLE_META:
         return 'meta-tag';
-      case 'region':
+      case TagCategory.REGION:
         return 'region-tag';
       default:
         return 'user-tag';
@@ -1917,16 +1944,16 @@
     tags.forEach((tag, index) => {
       const chip = createTagChip(tag, isTagSelected(tag, category), category, (selected) => {
         if (selected) {
-          addSelectedTag(tag, category);
+          addSelectedTag(tag, getTagCategory(category));
         } else {
-          removeSelectedTag(tag, category);
+          removeSelectedTag(tag, getTagCategory(category));
         }
         onChange(AppState.selectedTags);
       });
 
       if (AppState.editMode) {
         makeDraggable(chip, category, index, () => {
-          const newSortedTags = sortTagsByOrder(tags, category);
+          const newSortedTags = sortTagsByOrder(tags, getTagCategory(category));
           rebuildTagGroup(container, newSortedTags, selectedTags, onChange, category);
         });
       }
@@ -2047,9 +2074,9 @@
         return AppState.userTagsList;
       case 'api':
         return AppState.apiTagsList;
-      case 'meta':
-        return AppState.metaTagsList.filter((tag) => tag !== 'Learnable Meta');
       case 'region':
+        return AppState.regionTagsList;
+      case 'learnableMeta':
         return AppState.metaTagsList.filter((tag) => tag !== 'Learnable Meta');
       default:
         return [];
@@ -2539,6 +2566,96 @@
     return headerActions;
   }
 
+  // --- FILTERING FUNCTIONS ---
+  /**
+   * Checks if a map matches ALL selected tags from ALL categories (ALL filter mode)
+   * @param {string[]} allTags - All tags on the map
+   * @param {string} mapKey - Map key for looking up user tags and meta data
+   * @returns {boolean} True if map matches all selected tags
+   */
+  function matchesAllSelectedTags(allTags, mapKey) {
+    // Check user tags
+    if (AppState.selectedTags.userTags.length > 0) {
+      const userTags = AppState.currentUserTags[mapKey] || [];
+      if (!AppState.selectedTags.userTags.every((tag) => userTags.includes(tag))) {
+        return false;
+      }
+    }
+
+    // Check region tags
+    if (AppState.selectedTags.regionTags.length > 0) {
+      const regionTags = AppState.metaRegionCache?.[mapKey]?.regions || [];
+      if (!AppState.selectedTags.regionTags.every((tag) => regionTags.includes(tag))) {
+        return false;
+      }
+    }
+
+    // Check API tags
+    if (AppState.selectedTags.apiTags.length > 0) {
+      const apiTags = allTags.filter(
+        (tag) => !AppState.currentUserTags[mapKey]?.includes(tag) && tag !== 'Learnable Meta'
+      );
+      if (!AppState.selectedTags.apiTags.every((tag) => apiTags.includes(tag))) {
+        return false;
+      }
+    }
+
+    // Check Learnable Meta
+    if (AppState.selectedTags.learnableMeta) {
+      if (!isLearnableMetaFromCacheOrLocalStorage(mapKey, AppState.learnableMetaCache)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Checks if a map matches at least ONE selected tag from ANY category (ANY filter mode)
+   * @param {string[]} allTags - All tags on the map
+   * @param {string} mapKey - Map key for looking up user tags and meta data
+   * @returns {boolean} True if map matches at least one selected tag
+   */
+  function matchesAnySelectedTags(allTags, mapKey) {
+    // Check user tags
+    if (AppState.selectedTags.userTags.length > 0) {
+      const userTags = AppState.currentUserTags[mapKey] || [];
+      if (AppState.selectedTags.userTags.some((tag) => userTags.includes(tag))) {
+        return true;
+      }
+    }
+
+    // Check region tags
+    if (AppState.selectedTags.regionTags.length > 0) {
+      const regionTags = AppState.metaRegionCache?.[mapKey]?.regions || [];
+      if (AppState.selectedTags.regionTags.some((tag) => regionTags.includes(tag))) {
+        return true;
+      }
+    }
+
+    // Check API tags
+    if (AppState.selectedTags.apiTags.length > 0) {
+      const apiTags = allTags.filter(
+        (tag) =>
+          !AppState.currentUserTags[mapKey]?.includes(tag) &&
+          tag !== 'Learnable Meta' &&
+          tag !== 'Official'
+      );
+      if (AppState.selectedTags.apiTags.some((tag) => apiTags.includes(tag))) {
+        return true;
+      }
+    }
+
+    // Check Learnable Meta
+    if (AppState.selectedTags.learnableMeta) {
+      if (isLearnableMetaFromCacheOrLocalStorage(mapKey, AppState.learnableMetaCache)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   // --- PATCH TEASERS ---
   function patchTeasersWithControls() {
     const grid = findGridContainer();
@@ -2566,15 +2683,16 @@
       // Filter logic - combine tag filtering and search filtering
       let shouldShow = true;
 
-      // Tag filtering
-      const allSelectedTags = getAllSelectedTags();
+      // Tag filtering - category-specific
       if (getSelectedTagsCount() > 0) {
         if (AppState.filterMode === 'ALL') {
-          if (!allSelectedTags.every((tag) => allTags.includes(tag))) {
+          // ALL mode: must have ALL selected tags from ALL categories
+          if (!matchesAllSelectedTags(allTags, mapKey)) {
             shouldShow = false;
           }
         } else {
-          if (!allSelectedTags.some((tag) => allTags.includes(tag))) {
+          // ANY mode: must have at least ONE selected tag from ANY category
+          if (!matchesAnySelectedTags(allTags, mapKey)) {
             shouldShow = false;
           }
         }
@@ -2698,7 +2816,7 @@
         Array.isArray(AppState.metaRegionCache[mapKey].regions)
       ) {
         const regionTags = AppState.metaRegionCache[mapKey].regions;
-        const sortedRegionTags = sortTagsByOrder(regionTags, 'region');
+        const sortedRegionTags = sortTagsByOrder(regionTags, TagCategory.REGION);
         sortedRegionTags.forEach((region) => {
           const tagDiv = document.createElement('span');
           tagDiv.className = USER_TAG_CLASS + ' lmao-region';
@@ -2727,7 +2845,7 @@
       // Add user tags if enabled (in sorted order)
       if (AppState.tagVisibility.showUserTags) {
         const userTags = AppState.currentUserTags[mapKey] || [];
-        const sortedUserTags = sortTagsByOrder(userTags, 'user');
+        const sortedUserTags = sortTagsByOrder(userTags, TagCategory.USER);
         sortedUserTags.forEach((tag) => {
           const tagDiv = document.createElement('span');
           tagDiv.className = USER_TAG_CLASS;
