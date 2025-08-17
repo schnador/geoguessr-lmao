@@ -1326,7 +1326,7 @@
   function saveTagVisibility(tagVisibility) {
     debugLog(LogLevel.DEBUG, 'Saving tag visibility', tagVisibility);
     const currentState = loadLMAOState();
-    currentState.filterCollapse = filterCollapse;
+    currentState.tagVisibility = tagVisibility;
     saveLMAOState(currentState);
   }
 
@@ -1359,7 +1359,7 @@
         },
         filterCollapse: {
           user: false,
-          meta: false, // TODO: rename to regions
+          regions: false,
           api: true
         },
         selectedTags: []
@@ -2047,8 +2047,8 @@
           regionTags,
           AppState.selectedTags,
           (newTags) => AppState.updateSelectedTags(newTags),
-          AppState.filterCollapse?.meta,
-          (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, meta: c }),
+          AppState.filterCollapse?.regions,
+          (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, regions: c }),
           'region'
         )
       );
