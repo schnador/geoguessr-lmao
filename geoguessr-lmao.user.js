@@ -134,11 +134,78 @@
     }
     .lmao-collapsible-tags {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
+      gap: 0.25rem;
       margin-left: 0.25rem;
+      margin-top: 0.5rem;
     }
     .lmao-collapsible-tags.lmao-collapsed {
       display: none;
+    }
+    .lmao-tag-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.5rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      position: relative;
+    }
+    .lmao-tag-chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      opacity: 1 !important;
+    }
+    .lmao-tag-chip.selected {
+      border-color: rgba(255, 255, 255, 0.3);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+    }
+    .lmao-tag-chip:not(.selected) {
+      opacity: 0.5;
+    }
+    .lmao-tag-chip.user-tag {
+      background: color-mix(in srgb, var(--ds-color-blue-50) 50%, transparent);
+      border-color: var(--ds-color-blue-80);
+      color: #fff;
+    }
+    .lmao-tag-chip.api-tag {
+      background: rgba(0,0,0,0.2);
+      border-color: var(--ds-color-white-40);
+      color: var(--ds-color-white-60);
+    }
+    .lmao-tag-chip.meta-tag {
+      background: color-mix(in srgb, var(--ds-color-green-70) 50%, transparent);
+      border-color: var(--ds-color-green-80);
+      color: #fff;
+    }
+    .lmao-tag-chip.region-tag {
+      background: color-mix(in srgb, var(--ds-color-green-80) 50%, transparent);
+      border-color: var(--ds-color-green-80);
+      color: #fff;
+    }
+    .lmao-tag-chip.dragging {
+      opacity: 0.5;
+      transform: rotate(3deg);
+      z-index: 1000;
+    }
+    .lmao-tag-chip.drag-over {
+      border-color: var(--ds-color-purple-60);
+      background: color-mix(in srgb, var(--ds-color-purple-50) 30%, transparent);
+    }
+    .lmao-tag-chip.edit-mode {
+      cursor: grab;
+    }
+    .lmao-tag-chip.edit-mode:active {
+      cursor: grabbing;
+    }
+    .lmao-drag-handle {
+      margin-right: 0.25rem;
+      opacity: 0.6;
+      font-size: 0.6rem;
     }
     .lmao-collapsible-tag-label {
       margin: 0.2em 0;
@@ -676,6 +743,7 @@
   const LOCALSTORAGE_TAG_VISIBILITY_KEY = 'lmaoTagVisibility';
   const LOCALSTORAGE_FILTER_COLLAPSE_KEY = 'lmaoFilterCollapse';
   const LOCALSTORAGE_SELECTED_TAGS_KEY = 'lmaoSelectedTags';
+  const LOCALSTORAGE_TAG_ORDER_KEY = 'lmaoTagOrder';
   const LOCALSTORAGE_ADDITIONAL_MAP_INFO = 'lmaoAdditionalMapInfo';
   const LOCALSTORAGE_STATE_KEY = 'lmaoState';
   const LOCALSTORAGE_GEOMETA_PREFIX = 'geometa:map-info:';
@@ -702,6 +770,7 @@
     controlsDiv: null,
     searchQuery: '',
     searchCriteria: loadLMAOState().searchCriteria, // Load from localStorage
+    tagOrder: {}, // Will store tag order for each category
 
     // State management methods
     updateSelectedTags(newTags) {
@@ -735,6 +804,8 @@
       if (editToggleBtn) {
         editToggleBtn.className = 'lmao-edit-toggle' + (newMode ? ' active' : '');
       }
+      // Rebuild controls to show/hide drag handles
+      this.rebuildControls();
       this.rerender();
     },
 
@@ -1348,6 +1419,49 @@
     saveLMAOState(currentState);
   }
 
+  // --- TAG ORDER MANAGEMENT ---
+  function loadTagOrder() {
+    try {
+      return JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_TAG_ORDER_KEY)) || {};
+    } catch (err) {
+      debugLog(LogLevel.ERROR, 'Failed to load tag order', err);
+      return {};
+    }
+  }
+
+  function saveTagOrder(tagOrder) {
+    try {
+      _unsafeWindow.localStorage.setItem(LOCALSTORAGE_TAG_ORDER_KEY, JSON.stringify(tagOrder));
+      debugLog(LogLevel.DEBUG, 'Saved tag order', tagOrder);
+    } catch (e) {
+      debugLog(LogLevel.ERROR, 'Failed to save tag order', e);
+    }
+  }
+
+  /**
+   * Sorts tags according to saved order, putting unordered tags at the end
+   * @param {string[]} tags - Array of tag names
+   * @param {string} category - Category key ('user', 'api', 'meta')
+   * @returns {string[]} Sorted array of tags
+   */
+  function sortTagsByOrder(tags, category) {
+    const order = AppState.tagOrder[category] || [];
+    const orderedTags = [];
+    const unorderedTags = [...tags];
+
+    // Add tags in saved order
+    order.forEach((tag) => {
+      const index = unorderedTags.indexOf(tag);
+      if (index !== -1) {
+        orderedTags.push(tag);
+        unorderedTags.splice(index, 1);
+      }
+    });
+
+    // Add remaining unordered tags at the end
+    return [...orderedTags, ...unorderedTags.sort()];
+  }
+
   // --- EXPORT/IMPORT FUNCTIONS ---
   function exportLMAOSettings() {
     const exportData = {
@@ -1577,7 +1691,8 @@
     selectedTags,
     onChange,
     collapsed,
-    onCollapseToggle
+    onCollapseToggle,
+    category = 'user'
   ) {
     const groupDiv = document.createElement('div');
     groupDiv.className = 'lmao-collapsible-tag-group';
@@ -1594,28 +1709,237 @@
     header.onclick = () => onCollapseToggle(!collapsed);
     groupDiv.appendChild(header);
 
-    // Tags
+    // Tags container
     const tagsDiv = document.createElement('div');
     tagsDiv.className = 'lmao-collapsible-tags' + (collapsed ? ' lmao-collapsed' : '');
-    tags.forEach((tag) => {
-      const label = document.createElement('label');
-      label.className = 'lmao-collapsible-tag-label';
+    tagsDiv.setAttribute('data-category', category);
 
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.value = tag;
-      cb.checked = selectedTags.includes(tag);
-      cb.addEventListener('change', () => {
-        if (cb.checked) selectedTags.push(tag);
-        else selectedTags.splice(selectedTags.indexOf(tag), 1);
+    // Sort tags by saved order
+    const sortedTags = sortTagsByOrder(tags, category);
+
+    sortedTags.forEach((tag, index) => {
+      const chip = createTagChip(tag, selectedTags.includes(tag), category, (selected) => {
+        if (selected && !selectedTags.includes(tag)) {
+          selectedTags.push(tag);
+        } else if (!selected && selectedTags.includes(tag)) {
+          selectedTags.splice(selectedTags.indexOf(tag), 1);
+        }
         onChange([...selectedTags]);
       });
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(' ' + tag));
-      tagsDiv.appendChild(label);
+
+      // Add drag and drop functionality in edit mode
+      if (AppState.editMode) {
+        makeDraggable(chip, category, index, () => {
+          // Rebuild the group after reordering
+          const newSortedTags = sortTagsByOrder(tags, category);
+          rebuildTagGroup(tagsDiv, newSortedTags, selectedTags, onChange, category);
+        });
+      }
+
+      tagsDiv.appendChild(chip);
     });
+
     groupDiv.appendChild(tagsDiv);
     return groupDiv;
+  }
+
+  /**
+   * Creates a tag chip element
+   */
+  function createTagChip(tag, selected, category, onToggle) {
+    const chip = document.createElement('div');
+    chip.className = `lmao-tag-chip ${getTagChipClass(category)}${selected ? ' selected' : ''}${
+      AppState.editMode ? ' edit-mode' : ''
+    }`;
+    chip.setAttribute('data-tag', tag);
+    chip.setAttribute('data-category', category);
+
+    // Add drag handle in edit mode
+    if (AppState.editMode) {
+      const handle = document.createElement('span');
+      handle.className = 'lmao-drag-handle';
+      handle.textContent = '⋮';
+      chip.appendChild(handle);
+    }
+
+    const text = document.createElement('span');
+    text.textContent = tag;
+    chip.appendChild(text);
+
+    // Click to toggle selection (only if not in edit mode or not dragging)
+    chip.addEventListener('click', (e) => {
+      if (!AppState.editMode && !chip.classList.contains('dragging')) {
+        onToggle(!selected);
+        chip.classList.toggle('selected', !selected);
+      }
+    });
+
+    return chip;
+  }
+
+  /**
+   * Gets the appropriate CSS class for a tag chip based on category
+   */
+  function getTagChipClass(category) {
+    switch (category) {
+      case 'user':
+        return 'user-tag';
+      case 'api':
+        return 'api-tag';
+      case 'meta':
+        return 'meta-tag';
+      case 'region':
+        return 'region-tag';
+      default:
+        return 'user-tag';
+    }
+  }
+
+  /**
+   * Rebuilds a tag group container with new tag order
+   */
+  function rebuildTagGroup(container, tags, selectedTags, onChange, category) {
+    container.innerHTML = '';
+    tags.forEach((tag, index) => {
+      const chip = createTagChip(tag, selectedTags.includes(tag), category, (selected) => {
+        if (selected && !selectedTags.includes(tag)) {
+          selectedTags.push(tag);
+        } else if (!selected && selectedTags.includes(tag)) {
+          selectedTags.splice(selectedTags.indexOf(tag), 1);
+        }
+        onChange([...selectedTags]);
+      });
+
+      if (AppState.editMode) {
+        makeDraggable(chip, category, index, () => {
+          const newSortedTags = sortTagsByOrder(tags, category);
+          rebuildTagGroup(container, newSortedTags, selectedTags, onChange, category);
+        });
+      }
+
+      container.appendChild(chip);
+    });
+  }
+
+  /**
+   * Makes a tag chip draggable for reordering
+   */
+  function makeDraggable(chip, category, index, onReorder) {
+    chip.draggable = true;
+
+    chip.addEventListener('dragstart', (e) => {
+      chip.classList.add('dragging');
+      e.dataTransfer.setData(
+        'text/plain',
+        JSON.stringify({
+          tag: chip.getAttribute('data-tag'),
+          category: category,
+          index: index
+        })
+      );
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    chip.addEventListener('dragend', () => {
+      chip.classList.remove('dragging');
+      // Remove drag-over class from all chips
+      document.querySelectorAll('.lmao-tag-chip.drag-over').forEach((c) => {
+        c.classList.remove('drag-over');
+      });
+    });
+
+    chip.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      chip.classList.add('drag-over');
+    });
+
+    chip.addEventListener('dragleave', () => {
+      chip.classList.remove('drag-over');
+    });
+
+    chip.addEventListener('drop', (e) => {
+      e.preventDefault();
+      chip.classList.remove('drag-over');
+
+      try {
+        const dragData = JSON.parse(e.dataTransfer.getData('text/plain'));
+        const targetTag = chip.getAttribute('data-tag');
+        const targetCategory = chip.getAttribute('data-category');
+
+        // Only allow reordering within the same category
+        if (dragData.category !== targetCategory) return;
+
+        const sourceTag = dragData.tag;
+        if (sourceTag === targetTag) return;
+
+        reorderTags(sourceTag, targetTag, category);
+        onReorder();
+      } catch (err) {
+        debugLog(LogLevel.ERROR, 'Error handling drop', err);
+      }
+    });
+  }
+
+  /**
+   * Reorders tags by moving sourceTag before targetTag
+   */
+  function reorderTags(sourceTag, targetTag, category) {
+    debugLog(LogLevel.DEBUG, `Reordering ${sourceTag} before ${targetTag} in category ${category}`);
+
+    // Get current order or create new one
+    const currentOrder = AppState.tagOrder[category] || [];
+    const allTags = getCurrentTagsForCategory(category);
+
+    // Create a complete order array if it doesn't exist
+    let fullOrder = [...currentOrder];
+    allTags.forEach((tag) => {
+      if (!fullOrder.includes(tag)) {
+        fullOrder.push(tag);
+      }
+    });
+
+    // Remove source tag from current position
+    const sourceIndex = fullOrder.indexOf(sourceTag);
+    if (sourceIndex !== -1) {
+      fullOrder.splice(sourceIndex, 1);
+    }
+
+    // Find target position and insert source tag before it
+    const targetIndex = fullOrder.indexOf(targetTag);
+    if (targetIndex !== -1) {
+      fullOrder.splice(targetIndex, 0, sourceTag);
+    } else {
+      // If target not found, add to end
+      fullOrder.push(sourceTag);
+    }
+
+    // Update state and save
+    AppState.tagOrder[category] = fullOrder;
+    saveTagOrder(AppState.tagOrder);
+
+    debugLog(LogLevel.DEBUG, `New order for ${category}:`, fullOrder);
+
+    // Trigger rerender of map teasers to apply new tag order
+    AppState.rerender();
+  }
+
+  /**
+   * Gets all current tags for a category
+   */
+  function getCurrentTagsForCategory(category) {
+    switch (category) {
+      case 'user':
+        return AppState.userTagsList;
+      case 'api':
+        return AppState.apiTagsList;
+      case 'meta':
+        return AppState.metaTagsList.filter((tag) => tag !== 'Learnable Meta');
+      case 'region':
+        return AppState.metaTagsList.filter((tag) => tag !== 'Learnable Meta');
+      default:
+        return [];
+    }
   }
 
   function createTagVisibilityToggles(tagVisibility, onChange) {
@@ -1751,7 +2075,8 @@
         AppState.selectedTags,
         (newTags) => AppState.updateSelectedTags(newTags),
         AppState.filterCollapse.user,
-        (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, user: c })
+        (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, user: c }),
+        'user'
       )
     );
 
@@ -1765,7 +2090,8 @@
           AppState.selectedTags,
           (newTags) => AppState.updateSelectedTags(newTags),
           AppState.filterCollapse.meta,
-          (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, meta: c })
+          (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, meta: c }),
+          'region'
         )
       );
     }
@@ -1777,7 +2103,8 @@
         AppState.selectedTags,
         (newTags) => AppState.updateSelectedTags(newTags),
         AppState.filterCollapse.api,
-        (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, api: c })
+        (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, api: c }),
+        'api'
       )
     );
     controlsDiv.appendChild(header('Tag Visibility', '👁️'));
@@ -2245,7 +2572,7 @@
         tagsContainer.appendChild(tagDiv);
       }
 
-      // Add region tags if learnable meta
+      // Add region tags if learnable meta (in sorted order)
       if (
         AppState.tagVisibility.showRegionTags &&
         AppState.learnableMetaCache.has(mapKey) &&
@@ -2253,7 +2580,9 @@
         AppState.metaRegionCache[mapKey] &&
         Array.isArray(AppState.metaRegionCache[mapKey].regions)
       ) {
-        AppState.metaRegionCache[mapKey].regions.forEach((region) => {
+        const regionTags = AppState.metaRegionCache[mapKey].regions;
+        const sortedRegionTags = sortTagsByOrder(regionTags, 'region');
+        sortedRegionTags.forEach((region) => {
           const tagDiv = document.createElement('span');
           tagDiv.className = USER_TAG_CLASS + ' lmao-region';
           tagDiv.textContent = region;
@@ -2278,9 +2607,11 @@
         });
       }
 
-      // Add user tags if enabled
+      // Add user tags if enabled (in sorted order)
       if (AppState.tagVisibility.showUserTags) {
-        (AppState.currentUserTags[mapKey] || []).forEach((tag) => {
+        const userTags = AppState.currentUserTags[mapKey] || [];
+        const sortedUserTags = sortTagsByOrder(userTags, 'user');
+        sortedUserTags.forEach((tag) => {
           const tagDiv = document.createElement('span');
           tagDiv.className = USER_TAG_CLASS;
           tagDiv.style.cursor = 'default';
@@ -2524,6 +2855,7 @@
       AppState.currentUserTags = { ...userTags };
       AppState.tagVisibility = loadTagVisibility();
       AppState.filterCollapse = loadFilterCollapse();
+      AppState.tagOrder = loadTagOrder();
       AppState.filterMode = 'ALL';
       AppState.editMode = false;
       AppState.learnableMetaCache = learnableMetaCache;
