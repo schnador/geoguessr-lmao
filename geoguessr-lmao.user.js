@@ -421,6 +421,120 @@
     .lmao-small-clear-button:hover {
       background: var(--ds-color-red-80);
     }
+
+    /* Search Panel Styles */
+    .lmao-search-panel {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 0.25rem;
+      border: 1px solid var(--ds-color-white-20);
+      overflow: visible; /* Changed from hidden to visible */
+      min-width: 300px;
+      max-width: 400px;
+      flex: 1;
+    }
+    @media (max-width: 768px) {
+      .lmao-search-panel {
+        min-width: 250px;
+        max-width: 300px;
+      }
+    }
+    .lmao-search-dropdown {
+      background: var(--ds-color-purple-100);
+      border: none;
+      color: white;
+      font-size: 0.875rem;
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+      white-space: nowrap;
+      border-radius: 0;
+      min-width: 80px;
+      border-right: 1px solid var(--ds-color-white-20);
+    }
+    .lmao-search-dropdown:hover {
+      background: var(--ds-color-purple-80);
+    }
+    .lmao-search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 0.875rem;
+      padding: 0.5rem 0.75rem;
+      outline: none;
+      min-width: 0;
+    }
+    .lmao-search-input::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+    }
+    .lmao-search-clear {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+    }
+    .lmao-search-clear:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .lmao-search-dropdown-menu {
+      position: fixed; /* Changed to fixed since it's appended to body */
+      background: rgb(16 16 28/95%);
+      border: 1px solid var(--ds-color-white-20);
+      border-radius: 0.25rem;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+      z-index: 10002 !important;
+      min-width: 150px;
+      backdrop-filter: blur(10px);
+      display: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .lmao-search-dropdown-menu.show {
+      display: block !important;
+    }
+    .lmao-search-dropdown-item {
+      background: transparent;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 0.875rem;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      user-select: none;
+    }
+    .lmao-search-dropdown-item input[type="checkbox"] {
+      accent-color: var(--ds-color-purple-100);
+      margin: 0;
+      margin-right: 0.5rem;
+    }
+    .lmao-search-dropdown-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .lmao-search-dropdown-item:first-child {
+      border-radius: 0;
+    }
+    .lmao-search-dropdown-item:last-child {
+      border-radius: 0 0 0.25rem 0.25rem;
+    }
+    .lmao-search-icon {
+      font-size: 0.875rem;
+      opacity: 0.8;
+    }
   `);
 
   var _GM_xmlhttpRequest = /* @__PURE__ */ (() =>
@@ -469,6 +583,7 @@
   const LOCALSTORAGE_FILTER_COLLAPSE_KEY = 'lmaoFilterCollapse';
   const LOCALSTORAGE_SELECTED_TAGS_KEY = 'lmaoSelectedTags';
   const LOCALSTORAGE_ADDITIONAL_MAP_INFO = 'lmaoAdditionalMapInfo';
+  const LOCALSTORAGE_STATE_KEY = 'lmaoState';
   const LOCALSTORAGE_GEOMETA_PREFIX = 'geometa:map-info:';
   const USER_TAG_CLASS = 'lmao-map-teaser_tag user-tag';
   const API_TAG_CLASS = 'lmao-map-teaser_tag api-tag';
@@ -488,6 +603,8 @@
     learnableMetaCache: new Set(),
     metaRegionCache: {},
     controlsDiv: null,
+    searchQuery: '',
+    searchCriteria: loadLMAOState().searchCriteria, // Load from localStorage
 
     // State management methods
     updateSelectedTags(newTags) {
@@ -520,6 +637,39 @@
       const editToggleBtn = document.querySelector('.lmao-edit-toggle');
       if (editToggleBtn) {
         editToggleBtn.className = 'lmao-edit-toggle' + (newMode ? ' active' : '');
+      }
+      this.rerender();
+    },
+
+    updateSearchQuery(newQuery) {
+      this.searchQuery = newQuery;
+      this.rerender();
+    },
+
+    updateSearchCriteria(newCriteria) {
+      this.searchCriteria = [...newCriteria]; // Copy array
+      saveSearchCriteria(this.searchCriteria); // Save to localStorage
+      // Update dropdown display using shared function
+      const dropdown = document.querySelector('.lmao-search-dropdown');
+      if (dropdown) {
+        updateDropdownDisplay(dropdown, newCriteria);
+      }
+      // Update placeholder
+      const input = document.querySelector('.lmao-search-input');
+      if (input) {
+        if (newCriteria.length === 0) {
+          input.placeholder = 'Select search criteria first...';
+        } else if (newCriteria.length === 1) {
+          const placeholders = {
+            name: 'Search map names...',
+            description: 'Search descriptions...',
+            creator: 'Search creators...',
+            tags: 'Search tags...'
+          };
+          input.placeholder = placeholders[newCriteria[0]] || 'Search...';
+        } else {
+          input.placeholder = `Search...`;
+        }
       }
       this.rerender();
     },
@@ -651,6 +801,97 @@
 
   // --- UTILS ---
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /**
+   * Updates the dropdown button display based on the current search criteria
+   * @param {HTMLElement} dropdownElement - The dropdown button element to update
+   * @param {string[]} criteria - Array of selected search criteria
+   */
+  function updateDropdownDisplay(dropdownElement, criteria) {
+    const criteriaIcons = {
+      name: '📝',
+      description: '📄',
+      creator: '👤',
+      tags: '🏷️'
+    };
+
+    if (criteria.length === 0) {
+      dropdownElement.textContent = 'Select criteria...';
+    } else if (criteria.length === 1) {
+      dropdownElement.textContent = criteriaIcons[criteria[0]] || 'Search';
+    } else if (criteria.length === 4) {
+      // Show magnifying glass when all criteria are selected
+      dropdownElement.textContent = '🔍';
+    } else {
+      // Show icons for multiple criteria (but not all)
+      dropdownElement.innerHTML = '';
+      criteria.forEach((criteriaItem, index) => {
+        const icon = document.createElement('span');
+        icon.textContent = criteriaIcons[criteriaItem] || '?';
+        icon.style.marginRight = index < criteria.length - 1 ? '0.25rem' : '0';
+        dropdownElement.appendChild(icon);
+      });
+    }
+  }
+
+  /**
+   * Checks if a map matches the current search query based on the selected search criteria.
+   * @param {Object} map - The map object to check
+   * @param {string} query - The search query
+   * @param {string[]} criteriaArray - Array of search criteria to check
+   * @returns {boolean} - True if the map matches the search query in any of the selected criteria
+   */
+  function matchesSearchQuery(map, query, criteriaArray) {
+    if (!query || query.trim() === '' || !criteriaArray || criteriaArray.length === 0) return true;
+
+    const searchTerm = query.toLowerCase().trim();
+    const mapKey = getMapKey(map);
+
+    // Check each selected criteria - if ANY matches, return true
+    return criteriaArray.some((criteria) => {
+      switch (criteria) {
+        case 'name':
+          return map.name && map.name.toLowerCase().includes(searchTerm);
+
+        case 'description':
+          return map.description && map.description.toLowerCase().includes(searchTerm);
+
+        case 'creator':
+          return (
+            map.creator && map.creator.nick && map.creator.nick.toLowerCase().includes(searchTerm)
+          );
+
+        case 'tags': {
+          // Search in all types of tags: user tags, API tags, learnable meta, regions
+          const allTags = [...(map.tags || []), ...(AppState.currentUserTags[mapKey] || [])];
+
+          // Add Learnable Meta tag if applicable
+          if (isLearnableMetaFromCacheOrLocalStorage(mapKey, AppState.learnableMetaCache)) {
+            allTags.push('Learnable Meta');
+          }
+
+          // Add region tags if applicable
+          if (
+            AppState.metaRegionCache &&
+            AppState.metaRegionCache[mapKey] &&
+            Array.isArray(AppState.metaRegionCache[mapKey].regions)
+          ) {
+            allTags.push(...AppState.metaRegionCache[mapKey].regions);
+          }
+
+          // Add Official tag if applicable
+          if (map.isUserMap === false) {
+            allTags.push('Official');
+          }
+
+          return allTags.some((tag) => tag.toLowerCase().includes(searchTerm));
+        }
+
+        default:
+          return false;
+      }
+    });
+  }
 
   function getMapKey(map) {
     return map.id;
@@ -952,6 +1193,37 @@
       LOCALSTORAGE_SELECTED_TAGS_KEY,
       JSON.stringify(selectedTags)
     );
+  }
+
+  // --- LMAO STATE MANAGEMENT ---
+  function loadLMAOState() {
+    try {
+      const raw = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_STATE_KEY);
+      if (!raw) return { searchCriteria: ['name', 'description', 'creator', 'tags'] }; // Default: all enabled
+      const parsed = JSON.parse(raw);
+      return {
+        searchCriteria: parsed.searchCriteria || ['name', 'description', 'creator', 'tags']
+        // Future keys will be added here
+      };
+    } catch (e) {
+      debugLog('Failed to load LMAO state', e);
+      return { searchCriteria: ['name', 'description', 'creator', 'tags'] };
+    }
+  }
+
+  function saveLMAOState(state) {
+    try {
+      _unsafeWindow.localStorage.setItem(LOCALSTORAGE_STATE_KEY, JSON.stringify(state));
+      debugLog('LMAO state saved', state);
+    } catch (e) {
+      debugLog('Failed to save LMAO state', e);
+    }
+  }
+
+  function saveSearchCriteria(searchCriteria) {
+    const currentState = loadLMAOState();
+    currentState.searchCriteria = searchCriteria;
+    saveLMAOState(currentState);
   }
 
   // --- EXPORT/IMPORT FUNCTIONS ---
@@ -1321,12 +1593,14 @@
         (newMode) => AppState.updateFilterMode(newMode)
       )
     );
-    // Create small clear button for Filter heading
+    // Create small clear button for Filter heading - only clears tag filters
     const smallClearBtn = document.createElement('button');
-    smallClearBtn.innerHTML = '🗑️';
+    smallClearBtn.innerHTML = '🧹'; // Broom icon for cleaning tag filters
     smallClearBtn.className = 'lmao-small-clear-button';
-    smallClearBtn.onclick = () => AppState.updateSelectedTags([]);
-    const smallClearWithTooltip = createTooltip(smallClearBtn, 'Clear All Filters', true);
+    smallClearBtn.onclick = () => {
+      AppState.updateSelectedTags([]);
+    };
+    const smallClearWithTooltip = createTooltip(smallClearBtn, 'Clear Tag Filters', true);
 
     controlsDiv.appendChild(header('Filter', '🔍', smallClearWithTooltip));
 
@@ -1394,16 +1668,226 @@
     return controlsDiv;
   }
 
+  /**
+   * Creates the search panel component with dropdown and input.
+   * @returns {HTMLElement} The search panel element
+   */
+  function createSearchPanel() {
+    const searchPanel = document.createElement('div');
+    searchPanel.className = 'lmao-search-panel';
+
+    // Search criteria dropdown
+    const dropdown = document.createElement('button');
+    dropdown.className = 'lmao-search-dropdown';
+    dropdown.type = 'button';
+
+    // Set initial display based on current criteria using shared function
+    updateDropdownDisplay(dropdown, AppState.searchCriteria);
+
+    // Dropdown menu
+    const dropdownMenu = document.createElement('div');
+    dropdownMenu.className = 'lmao-search-dropdown-menu';
+
+    const searchCriteria = [
+      { value: 'name', label: 'Name', icon: '📝' },
+      { value: 'description', label: 'Description', icon: '📄' },
+      { value: 'creator', label: 'Creator', icon: '👤' },
+      { value: 'tags', label: 'Tags', icon: '🏷️' }
+    ];
+
+    searchCriteria.forEach((criteria) => {
+      const item = document.createElement('label');
+      item.className = 'lmao-search-dropdown-item';
+      item.style.cursor = 'pointer';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = criteria.value;
+      checkbox.checked = AppState.searchCriteria.includes(criteria.value);
+      checkbox.style.marginRight = '0.5rem';
+
+      const icon = document.createElement('span');
+      icon.className = 'lmao-search-icon';
+      icon.textContent = criteria.icon;
+
+      const labelText = document.createElement('span');
+      labelText.textContent = criteria.label;
+
+      checkbox.onchange = (e) => {
+        e.stopPropagation();
+        const currentCriteria = [...AppState.searchCriteria];
+
+        if (checkbox.checked) {
+          if (!currentCriteria.includes(criteria.value)) {
+            currentCriteria.push(criteria.value);
+          }
+        } else {
+          const index = currentCriteria.indexOf(criteria.value);
+          if (index > -1) {
+            currentCriteria.splice(index, 1);
+          }
+        }
+
+        AppState.updateSearchCriteria(currentCriteria);
+      };
+
+      item.appendChild(checkbox);
+      item.appendChild(icon);
+      item.appendChild(labelText);
+
+      // Prevent label click from closing dropdown
+      item.onclick = (e) => {
+        e.stopPropagation();
+      };
+
+      dropdownMenu.appendChild(item);
+    });
+
+    // Toggle dropdown - use only click event with proper handling
+    dropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      dropdownMenu.classList.toggle('show');
+      const isShowing = dropdownMenu.classList.contains('show');
+
+      if (isShowing) {
+        // Position the dropdown relative to the button since it's now in document.body
+        const positionDropdown = () => {
+          const buttonRect = dropdown.getBoundingClientRect();
+          dropdownMenu.style.position = 'fixed';
+          dropdownMenu.style.top = buttonRect.bottom + 'px';
+          dropdownMenu.style.left = buttonRect.left + 'px';
+          dropdownMenu.style.minWidth = buttonRect.width + 'px';
+        };
+
+        positionDropdown();
+
+        // Add scroll listener to reposition dropdown when scrolling
+        const scrollHandler = () => {
+          if (dropdownMenu.classList.contains('show')) {
+            positionDropdown();
+          }
+        };
+
+        window.addEventListener('scroll', scrollHandler, true);
+        window.addEventListener('resize', scrollHandler);
+
+        // Store handlers for cleanup
+        dropdownMenu._scrollHandler = scrollHandler;
+      } else {
+        // Clean up scroll listeners when dropdown closes
+        if (dropdownMenu._scrollHandler) {
+          window.removeEventListener('scroll', dropdownMenu._scrollHandler, true);
+          window.removeEventListener('resize', dropdownMenu._scrollHandler);
+          dropdownMenu._scrollHandler = null;
+        }
+      }
+    });
+
+    // Search input
+    const input = document.createElement('input');
+    input.className = 'lmao-search-input';
+    input.type = 'text';
+    input.value = AppState.searchQuery;
+
+    // Set initial placeholder based on current criteria
+    const updatePlaceholder = () => {
+      const currentCriteria = AppState.searchCriteria;
+      if (currentCriteria.length === 0) {
+        input.placeholder = 'Select criteria first...';
+      } else {
+        input.placeholder = `Search...`;
+      }
+    };
+
+    updatePlaceholder();
+
+    // Search input event handlers
+    let searchTimeout;
+    input.oninput = (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        AppState.updateSearchQuery(e.target.value);
+      }, 300); // Debounce search
+    };
+
+    input.onkeydown = (e) => {
+      e.stopPropagation();
+    };
+
+    // Clear search button
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'lmao-search-clear';
+    clearBtn.innerHTML = '✕';
+    clearBtn.type = 'button';
+    clearBtn.title = 'Clear search';
+    clearBtn.onclick = (e) => {
+      e.stopPropagation();
+      input.value = '';
+      AppState.updateSearchQuery('');
+    };
+
+    // Assemble search panel (but append dropdown to body to avoid clipping)
+    searchPanel.appendChild(dropdown);
+    searchPanel.appendChild(input);
+    searchPanel.appendChild(clearBtn);
+
+    // Append dropdown menu to body to avoid overflow clipping
+    document.body.appendChild(dropdownMenu);
+
+    // Close dropdown when clicking outside - use a unique identifier to avoid conflicts
+    const closeDropdownHandler = (e) => {
+      // Only close if dropdown is open and click is outside both the search panel and dropdown menu
+      if (
+        dropdownMenu.classList.contains('show') &&
+        !searchPanel.contains(e.target) &&
+        !dropdownMenu.contains(e.target)
+      ) {
+        dropdownMenu.classList.remove('show');
+        // Clean up scroll listeners when dropdown closes
+        if (dropdownMenu._scrollHandler) {
+          window.removeEventListener('scroll', dropdownMenu._scrollHandler, true);
+          window.removeEventListener('resize', dropdownMenu._scrollHandler);
+          dropdownMenu._scrollHandler = null;
+        }
+      }
+    };
+
+    // Add the outside click listener with a delay to avoid immediate conflicts
+    setTimeout(() => {
+      document.addEventListener('click', closeDropdownHandler, true); // Use capture phase
+    }, 100);
+
+    return searchPanel;
+  }
+
   function createHeaderActions() {
     const headerActions = document.createElement('div');
     headerActions.className = 'lmao-header-actions';
 
-    // Clear filters button with trash icon
+    // Add search panel first
+    const searchPanel = createSearchPanel();
+    headerActions.appendChild(searchPanel);
+
+    // Clear filters button with reset icon
     const clearFiltersBtn = document.createElement('button');
     clearFiltersBtn.innerHTML = '🗑️'; // Trash icon
     clearFiltersBtn.className = 'lmao-header-button lmao-clear-button';
-    clearFiltersBtn.onclick = () => AppState.updateSelectedTags([]);
-    const clearFiltersWithTooltip = createTooltip(clearFiltersBtn, 'Clear All Filters', true);
+    clearFiltersBtn.onclick = () => {
+      AppState.updateSelectedTags([]);
+      AppState.updateSearchQuery('');
+      // Also clear the search input
+      const searchInput = document.querySelector('.lmao-search-input');
+      if (searchInput) {
+        searchInput.value = '';
+      }
+    };
+    const clearFiltersWithTooltip = createTooltip(
+      clearFiltersBtn,
+      'Reset All (Filters & Search)',
+      true
+    );
     headerActions.appendChild(clearFiltersWithTooltip);
 
     // Edit mode toggle button
@@ -1500,19 +1984,33 @@
         allTags.push('Learnable Meta');
       if (map.isUserMap === false) allTags.push('Official');
 
-      // Filter logic
+      // Filter logic - combine tag filtering and search filtering
+      let shouldShow = true;
+
+      // Tag filtering
       if (AppState.selectedTags.length > 0) {
         if (AppState.filterMode === 'ALL') {
           if (!AppState.selectedTags.every((tag) => allTags.includes(tag))) {
-            teaser.closest('li').style.display = 'none';
-            return;
+            shouldShow = false;
           }
         } else {
           if (!AppState.selectedTags.some((tag) => allTags.includes(tag))) {
-            teaser.closest('li').style.display = 'none';
-            return;
+            shouldShow = false;
           }
         }
+      }
+
+      // Search filtering - only apply if there's a search query and tag filtering passed
+      if (shouldShow && AppState.searchQuery && AppState.searchQuery.trim() !== '') {
+        if (!matchesSearchQuery(map, AppState.searchQuery, AppState.searchCriteria)) {
+          shouldShow = false;
+        }
+      }
+
+      // Apply visibility
+      if (!shouldShow) {
+        teaser.closest('li').style.display = 'none';
+        return;
       }
       teaser.closest('li').style.display = '';
 
