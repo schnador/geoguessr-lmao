@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GeoGuessr Liked Maps Advanced Overhaul (LMAO)
 // @namespace    https://github.com/schnador/
-// @version      1.0.0
+// @version      1.1.0
 // @description  Adds organization to liked maps on GeoGuessr. Add tags and filter them. Integrates with Learnable Meta!
 // @author       snador
 // @icon         https://github.com/schnador/geoguessr-lmao/raw/main/img/lmao_icon.png
