@@ -1816,6 +1816,20 @@
       e.stopPropagation();
     };
 
+    // Close dropdown when clicking on the input field
+    input.onclick = (e) => {
+      e.stopPropagation();
+      if (dropdownMenu.classList.contains('show')) {
+        dropdownMenu.classList.remove('show');
+        // Clean up scroll listeners when dropdown closes
+        if (dropdownMenu._scrollHandler) {
+          window.removeEventListener('scroll', dropdownMenu._scrollHandler, true);
+          window.removeEventListener('resize', dropdownMenu._scrollHandler);
+          dropdownMenu._scrollHandler = null;
+        }
+      }
+    };
+
     // Clear search button
     const clearBtn = document.createElement('button');
     clearBtn.className = 'lmao-search-clear';
