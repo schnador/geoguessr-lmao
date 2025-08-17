@@ -371,12 +371,10 @@
       width: 100% !important;
       margin-bottom: 1rem !important;
       position: relative;
+      justify-content: space-between;
     }
     .lmao-header-wrapper h1[class*="headline_heading__"] {
       margin: 0 !important;
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
       white-space: nowrap;
     }
     .lmao-header-wrapper .lmao-header-actions {
@@ -601,6 +599,23 @@
     .lmao-search-icon {
       font-size: 0.875rem;
       opacity: 0.8;
+    }
+    .lmao-map-counter {
+      margin: 0;
+      margin-right: 0.5rem;
+      margin-left: auto;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--ds-color-white-100);
+    }
+    .lmao-heading-container {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1;
     }
   `);
 
@@ -962,11 +977,11 @@
       // Create wrapper div
       const headerWrapper = document.createElement('div');
       headerWrapper.className = 'lmao-header-wrapper';
-      headerWrapper.style.display = 'flex';
-      headerWrapper.style.alignItems = 'center';
-      headerWrapper.style.justifyContent = 'space-between';
-      headerWrapper.style.width = '100%';
-      headerWrapper.style.marginBottom = '1rem';
+
+      // Create map counter
+      const mapCounter = document.createElement('h1');
+      mapCounter.id = 'lmao-map-counter';
+      mapCounter.className = 'lmao-map-counter';
 
       // Create and add header actions
       const headerActions = createHeaderActions();
@@ -979,11 +994,20 @@
         // Insert wrapper where h1 was
         parent.insertBefore(headerWrapper, heading);
 
-        // Move h1 into wrapper
-        headerWrapper.appendChild(heading);
+        // wrap heading in heading container
+        parent.removeChild(heading);
+        const headingContainer = document.createElement('div');
+        headingContainer.className = 'lmao-heading-container';
+        headingContainer.appendChild(mapCounter);
+        headingContainer.appendChild(heading);
+
+        headerWrapper.appendChild(headingContainer);
 
         // Add header actions to wrapper
         headerWrapper.appendChild(headerActions);
+
+        // Update the map counter with initial count
+        updateMapCounter();
 
         debugLog(LogLevel.DEBUG, 'Header wrapper created successfully');
       } else {
@@ -993,6 +1017,7 @@
 
     rerender() {
       patchTeasersWithControls();
+      updateMapCounter();
     }
   };
 
@@ -2566,6 +2591,23 @@
     return headerActions;
   }
 
+  /**
+   * Updates the map counter in the header
+   */
+  function updateMapCounter() {
+    const counter = document.getElementById('lmao-map-counter');
+    if (!counter) return;
+
+    const totalMaps = AppState.maps ? AppState.maps.length : 0;
+    const visibleMaps = countVisibleMaps();
+
+    if (visibleMaps === totalMaps) {
+      counter.textContent = totalMaps.toString();
+    } else {
+      counter.textContent = `${visibleMaps}/${totalMaps}`;
+    }
+  }
+
   // --- FILTERING FUNCTIONS ---
   /**
    * Checks if a map matches ALL selected tags from ALL categories (ALL filter mode)
@@ -2956,6 +2998,9 @@
         tagsContainer.appendChild(addTagInput);
       }
     });
+
+    // Update the map counter after filtering
+    updateMapCounter();
   }
 
   // --- DOM FINDERS ---
@@ -2973,6 +3018,27 @@
     const teasers = Array.from(grid.querySelectorAll('li > a[class*="map-teaser_mapTeaser__"]'));
     debugLog(LogLevel.TRACE, `Found ${teasers.length} map teaser elements`);
     return teasers;
+  }
+
+  /**
+   * Counts the number of visible map teasers
+   * @returns {number} The count of visible maps
+   */
+  function countVisibleMaps() {
+    const grid = findGridContainer();
+    if (!grid) return 0;
+
+    const teasers = findMapTeaserElements(grid);
+    let visibleCount = 0;
+
+    teasers.forEach((teaser) => {
+      const listItem = teaser.closest('li');
+      if (listItem && listItem.style.display !== 'none') {
+        visibleCount++;
+      }
+    });
+
+    return visibleCount;
   }
 
   function findTagsContainer(mapTeaser) {

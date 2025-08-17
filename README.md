@@ -14,6 +14,7 @@ A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr
 
 - **Tagging:** Add, edit, and filter custom tags for your liked maps.
 - **Filtering:** Easily filter maps by their tags - Default tags and custom tags.
+- **Searching:** Use the searchbar to find maps by their name, description, author and corresponding tags
 - **De-clutter:** You can now hide the barely useful default tags provided by geoguessr. More space for custom tags 😎
 - **Learnable Meta Integration:** Instantly see which maps are supported by [Learnable Meta](https://learnablemeta.com/). Regions are also tagged for you.
 
@@ -92,6 +93,8 @@ This is also useful for making backups.
 - Create video to show installation and usage
 - Integrate with available scripts that work on the liked maps page
 - Keybinds
+- Configure visible data in the map teasers
+- Display 5k radius
 - Filter favourites??
 
 **Feel free to add suggestions under ["Issues"](https://github.com/schnador/geoguessr-lmao/issues/new) with the tag "enhancement"**
