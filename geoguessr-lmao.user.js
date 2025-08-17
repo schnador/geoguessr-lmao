@@ -740,10 +740,6 @@
   // --- CONSTANTS & LOCALSTORAGE KEYS ---
   const LOCALSTORAGE_INTERNAL_CONFIG = 'lmaoDevConfig';
   const LOCALSTORAGE_USER_TAGS_KEY = 'lmaoUserTags';
-  const LOCALSTORAGE_TAG_VISIBILITY_KEY = 'lmaoTagVisibility';
-  const LOCALSTORAGE_FILTER_COLLAPSE_KEY = 'lmaoFilterCollapse';
-  const LOCALSTORAGE_SELECTED_TAGS_KEY = 'lmaoSelectedTags';
-  const LOCALSTORAGE_TAG_ORDER_KEY = 'lmaoTagOrder';
   const LOCALSTORAGE_ADDITIONAL_MAP_INFO = 'lmaoAdditionalMapInfo';
   const LOCALSTORAGE_STATE_KEY = 'lmaoState';
   const LOCALSTORAGE_GEOMETA_PREFIX = 'geometa:map-info:';
@@ -769,7 +765,7 @@
     metaRegionCache: {},
     controlsDiv: null,
     searchQuery: '',
-    searchCriteria: loadLMAOState().searchCriteria, // Load from localStorage
+    searchCriteria: {},
     tagOrder: {}, // Will store tag order for each category
 
     // State management methods
@@ -1327,80 +1323,54 @@
     _unsafeWindow.localStorage.setItem(LOCALSTORAGE_USER_TAGS_KEY, JSON.stringify(userTags));
   }
 
-  function loadTagVisibility() {
-    const defaultTagVisibility = {
-      showUserTags: true,
-      showLearnableMetaTag: true,
-      showRegionTags: true,
-      showApiTags: false
-    };
-
-    try {
-      return (
-        JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_TAG_VISIBILITY_KEY)) ||
-        defaultTagVisibility
-      );
-    } catch (err) {
-      debugLog(LogLevel.ERROR, 'Failed to load tag visibility', err);
-      return defaultTagVisibility;
-    }
+  function saveTagVisibility(tagVisibility) {
+    debugLog(LogLevel.DEBUG, 'Saving tag visibility', tagVisibility);
+    const currentState = loadLMAOState();
+    currentState.filterCollapse = filterCollapse;
+    saveLMAOState(currentState);
   }
 
-  function saveTagVisibility(state) {
-    debugLog(LogLevel.DEBUG, 'Saving tag visibility', state);
-    _unsafeWindow.localStorage.setItem(LOCALSTORAGE_TAG_VISIBILITY_KEY, JSON.stringify(state));
-  }
-
-  function loadFilterCollapse() {
-    try {
-      return (
-        JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY)) || {
-          user: false,
-          api: true,
-          meta: false
-        }
-      );
-    } catch (err) {
-      debugLog(LogLevel.ERROR, 'Failed to load filter collapse state', err);
-      return { user: false, api: true, meta: false };
-    }
-  }
-
-  function saveFilterCollapse(state) {
-    debugLog(LogLevel.DEBUG, 'Saving filter collapse state', state);
-    _unsafeWindow.localStorage.setItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY, JSON.stringify(state));
-  }
-
-  function loadSelectedTags() {
-    try {
-      return JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_SELECTED_TAGS_KEY)) || [];
-    } catch (err) {
-      debugLog(LogLevel.ERROR, 'Failed to load selected tags', err);
-      return [];
-    }
+  function saveFilterCollapse(filterCollapse) {
+    debugLog(LogLevel.DEBUG, 'Saving filter collapse', filterCollapse);
+    const currentState = loadLMAOState();
+    currentState.filterCollapse = filterCollapse;
+    saveLMAOState(currentState);
   }
 
   function saveSelectedTags(selectedTags) {
     debugLog(LogLevel.DEBUG, 'Saving selected tags', selectedTags);
-    _unsafeWindow.localStorage.setItem(
-      LOCALSTORAGE_SELECTED_TAGS_KEY,
-      JSON.stringify(selectedTags)
-    );
+    const currentState = loadLMAOState();
+    currentState.selectedTags = selectedTags;
+    saveLMAOState(currentState);
   }
 
   // --- LMAO STATE MANAGEMENT ---
   function loadLMAOState() {
     try {
-      const raw = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_STATE_KEY);
-      if (!raw) return { searchCriteria: ['name', 'description', 'creator', 'tags'] }; // Default: all enabled
-      const parsed = JSON.parse(raw);
-      return {
-        searchCriteria: parsed.searchCriteria || ['name', 'description', 'creator', 'tags']
-        // Future keys will be added here
+      const defaultState = {
+        // defaults
+        searchCriteria: ['name', 'description', 'creator', 'tags'],
+        tagOrder: {},
+        tagVisibility: {
+          showUserTags: true,
+          showLearnableMetaTag: true,
+          showRegionTags: true,
+          showApiTags: false
+        },
+        filterCollapse: {
+          user: false,
+          meta: false, // TODO: rename to regions
+          api: true
+        },
+        selectedTags: []
       };
+      const raw = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_STATE_KEY);
+      if (!raw) return defaultState; // Default: all enabled
+      const parsed = JSON.parse(raw);
+      return { ...defaultState, ...parsed };
     } catch (e) {
       debugLog(LogLevel.ERROR, 'Failed to load LMAO state', e);
-      return { searchCriteria: ['name', 'description', 'creator', 'tags'] };
+      return defaultState;
     }
   }
 
@@ -1420,22 +1390,10 @@
   }
 
   // --- TAG ORDER MANAGEMENT ---
-  function loadTagOrder() {
-    try {
-      return JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_TAG_ORDER_KEY)) || {};
-    } catch (err) {
-      debugLog(LogLevel.ERROR, 'Failed to load tag order', err);
-      return {};
-    }
-  }
-
   function saveTagOrder(tagOrder) {
-    try {
-      _unsafeWindow.localStorage.setItem(LOCALSTORAGE_TAG_ORDER_KEY, JSON.stringify(tagOrder));
-      debugLog(LogLevel.DEBUG, 'Saved tag order', tagOrder);
-    } catch (e) {
-      debugLog(LogLevel.ERROR, 'Failed to save tag order', e);
-    }
+    const currentState = loadLMAOState();
+    currentState.tagOrder = tagOrder;
+    saveLMAOState(currentState);
   }
 
   /**
@@ -2055,7 +2013,7 @@
     if (hasLearnableMeta) {
       const learnableMetaCheckbox = createCheckbox(
         'Learnable Meta',
-        AppState.selectedTags.includes('Learnable Meta'),
+        AppState.selectedTags?.includes('Learnable Meta'),
         (checked) => {
           const newTags = checked
             ? [...AppState.selectedTags, 'Learnable Meta']
@@ -2074,7 +2032,7 @@
         AppState.userTagsList,
         AppState.selectedTags,
         (newTags) => AppState.updateSelectedTags(newTags),
-        AppState.filterCollapse.user,
+        AppState.filterCollapse?.user,
         (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, user: c }),
         'user'
       )
@@ -2089,7 +2047,7 @@
           regionTags,
           AppState.selectedTags,
           (newTags) => AppState.updateSelectedTags(newTags),
-          AppState.filterCollapse.meta,
+          AppState.filterCollapse?.meta,
           (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, meta: c }),
           'region'
         )
@@ -2102,7 +2060,7 @@
         AppState.apiTagsList,
         AppState.selectedTags,
         (newTags) => AppState.updateSelectedTags(newTags),
-        AppState.filterCollapse.api,
+        AppState.filterCollapse?.api,
         (c) => AppState.updateFilterCollapse({ ...AppState.filterCollapse, api: c }),
         'api'
       )
@@ -2847,15 +2805,20 @@
       debugLog(LogLevel.INFO, `Found ${metaTagsSet.size} total meta tags (including regions)`);
 
       // Initialize AppState
+
+      const lmaoState = loadLMAOState();
+      console.log('lmaoState TEST', lmaoState);
+
       AppState.maps = maps;
       AppState.userTagsList = Array.from(userTagsSet).sort();
       AppState.apiTagsList = Array.from(apiTagsSet).sort();
       AppState.metaTagsList = Array.from(metaTagsSet).sort();
-      AppState.selectedTags = loadSelectedTags();
       AppState.currentUserTags = { ...userTags };
-      AppState.tagVisibility = loadTagVisibility();
-      AppState.filterCollapse = loadFilterCollapse();
-      AppState.tagOrder = loadTagOrder();
+      AppState.selectedTags = lmaoState.selectedTags;
+      AppState.tagVisibility = lmaoState.tagVisibility;
+      AppState.filterCollapse = lmaoState.filterCollapse;
+      AppState.tagOrder = lmaoState.tagOrder;
+      AppState.searchCriteria = lmaoState.searchCriteria;
       AppState.filterMode = 'ALL';
       AppState.editMode = false;
       AppState.learnableMetaCache = learnableMetaCache;
