@@ -496,6 +496,7 @@
       min-width: 300px;
       max-width: 400px;
       flex: 1;
+      transition: border-color 0.2s ease;
     }
     @media (max-width: 768px) {
       .lmao-search-panel {
@@ -877,6 +878,10 @@
         } else {
           input.placeholder = `Search...`;
         }
+      }
+
+      if (window.updateSearchPanelBorder) {
+        window.updateSearchPanelBorder();
       }
       this.rerender();
     },
@@ -2286,6 +2291,18 @@
     const searchPanel = document.createElement('div');
     searchPanel.className = 'lmao-search-panel';
 
+    const updateSearchPanelBorder = () => {
+      const currentCriteria = AppState.searchCriteria;
+      if (currentCriteria.length === 0) {
+        searchPanel.style.borderColor = 'var(--ds-color-red-80)'; // Red border when no criteria
+      } else {
+        searchPanel.style.borderColor = 'var(--ds-color-white-20)'; // Default border
+      }
+    };
+
+    // Make the function globally accessible so it can be called when criteria changes
+    window.updateSearchPanelBorder = updateSearchPanelBorder;
+
     // Search criteria dropdown
     const dropdown = document.createElement('button');
     dropdown.className = 'lmao-search-dropdown';
@@ -2339,6 +2356,7 @@
         }
 
         AppState.updateSearchCriteria(currentCriteria);
+        updateSearchPanelBorder();
       };
 
       item.appendChild(checkbox);
@@ -2412,6 +2430,7 @@
     };
 
     updatePlaceholder();
+    updateSearchPanelBorder();
 
     // Search input event handlers
     let searchTimeout;
