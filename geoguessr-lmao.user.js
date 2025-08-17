@@ -549,30 +549,113 @@
   const CONFIG = {
     version: GM_info.script.version ? GM_info.script.version : 'unknown',
     features: {
-      debugMode: true
+      debugMode: true,
+      logLevel: 'INFO' // Default log level: TRACE, DEBUG, INFO, WARN, ERROR
     }
     // validPaths: ['/me/likes', '/maps/community'],
     // validTabs: [undefined, 'liked-maps']
   };
 
+  // --- LOG LEVELS ---
+  const LOG_LEVELS = {
+    TRACE: 0, // Most verbose - DOM finding, detailed operations
+    DEBUG: 1, // General debugging info
+    INFO: 2, // Important information
+    WARN: 3, // Warnings
+    ERROR: 4 // Errors only
+  };
+
   /**
-   * Debug logger for LMAO. Uses console.trace to print the calling function name automatically.
-   * @param {...any} args
+   * Gets the current log level from CONFIG object.
+   * @returns {number} Current log level
    */
-  function debugLog(...args) {
-    if (CONFIG.features.debugMode) {
-      // Get the calling function name from the stack
-      const stack = new Error().stack;
-      let fnName = 'unknown';
-      if (stack) {
-        const lines = stack.split('\n');
-        // The third line is usually the caller (first is Error, second is debugLog)
-        if (lines.length > 2) {
-          const match = lines[2].match(/at (\w+)/);
-          if (match) fnName = match[1];
-        }
+  function getCurrentLogLevel() {
+    const configLevel = CONFIG.features.logLevel;
+    if (configLevel && LOG_LEVELS.hasOwnProperty(configLevel)) {
+      return LOG_LEVELS[configLevel];
+    }
+    return LOG_LEVELS.INFO; // Default log level
+  }
+
+  /**
+   * Helper function to set the log level for debugging.
+   * Updates the CONFIG object and saves it to lmaoDevConfig localStorage.
+   * Call this from the browser console to change log level.
+   * @param {string} level - One of: 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'
+   * @example
+   * // In browser console:
+   * setLMAOLogLevel('DEBUG')  // Show debug and higher
+   * setLMAOLogLevel('TRACE')  // Show all logs (most verbose)
+   * setLMAOLogLevel('ERROR')  // Show only errors
+   */
+  function setLMAOLogLevel(level) {
+    if (!LOG_LEVELS.hasOwnProperty(level)) {
+      console.error('[LMAO] Invalid log level. Available levels:', Object.keys(LOG_LEVELS));
+      return;
+    }
+    try {
+      CONFIG.features.logLevel = level;
+      saveDevConfig();
+      console.info(`[LMAO] Log level set to: ${level} (${LOG_LEVELS[level]})`);
+    } catch (e) {
+      console.error('[LMAO] Failed to set log level:', e);
+    }
+  }
+
+  // Make the function available globally for console access
+  if (typeof _unsafeWindow !== 'undefined' && _unsafeWindow) {
+    _unsafeWindow.setLMAOLogLevel = setLMAOLogLevel;
+  } else {
+    window.setLMAOLogLevel = setLMAOLogLevel;
+  }
+
+  /**
+   * Debug logger for LMAO with log levels. Uses console methods based on log level.
+   * @param {string} level - Log level: 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'
+   * @param {...any} args - Arguments to log
+   * @example
+   * debugLog('TRACE', 'Finding DOM element');
+   * debugLog('ERROR', 'Failed to fetch data', error);
+   */
+  function debugLog(level, ...args) {
+    if (!CONFIG.features.debugMode) return;
+
+    const currentLevel = getCurrentLogLevel();
+    const messageLevel = LOG_LEVELS[level] || LOG_LEVELS.DEBUG;
+
+    // Only log if message level is >= current log level
+    if (messageLevel < currentLevel) return;
+
+    // Get the calling function name from the stack
+    const stack = new Error().stack;
+    let fnName = 'unknown';
+    if (stack) {
+      const lines = stack.split('\n');
+      // The third line is usually the caller (first is Error, second is debugLog)
+      if (lines.length > 2) {
+        const match = lines[2].match(/at (\w+)/);
+        if (match) fnName = match[1];
       }
-      console.log(`[LMAO] ${fnName}:`, ...args);
+    }
+
+    const prefix = `[LMAO] ${level} ${fnName}:`;
+
+    // Use appropriate console method based on log level
+    switch (level) {
+      case 'ERROR':
+        console.error(prefix, ...args);
+        break;
+      case 'WARN':
+        console.warn(prefix, ...args);
+        break;
+      case 'INFO':
+        console.info(prefix, ...args);
+        break;
+      case 'DEBUG':
+      case 'TRACE':
+      default:
+        console.log(prefix, ...args);
+        break;
     }
   }
 
@@ -587,6 +670,9 @@
   const LOCALSTORAGE_GEOMETA_PREFIX = 'geometa:map-info:';
   const USER_TAG_CLASS = 'lmao-map-teaser_tag user-tag';
   const API_TAG_CLASS = 'lmao-map-teaser_tag api-tag';
+
+  // Load dev config at startup
+  loadDevConfig();
 
   // --- GLOBAL STATE ---
   const AppState = {
@@ -694,6 +780,7 @@
     },
 
     rebuildControls() {
+      debugLog('DEBUG', 'Rebuilding controls UI');
       const newControls = createControlsUI();
 
       // Find the proper container for the sidebar
@@ -705,17 +792,17 @@
         const likesMapDiv = grid.closest('div[class*="likes_map__"]');
         if (likesMapDiv) {
           targetContainer = likesMapDiv;
-          console.log('[LMAO] Using likes_map div as target container');
+          debugLog('DEBUG', 'Using likes_map div as target container');
         }
       }
 
       if (!targetContainer) {
         targetContainer = findFullHeightContainer();
-        console.log('[LMAO] Falling back to main container');
+        debugLog('DEBUG', 'Falling back to main container');
       }
 
       if (!targetContainer) {
-        console.log('[LMAO] No suitable container found for sidebar');
+        debugLog('ERROR', 'No suitable container found for sidebar');
         return;
       }
 
@@ -733,7 +820,7 @@
       }
 
       this.controlsDiv = newControls;
-      console.log('[LMAO] Sidebar inserted into:', targetContainer);
+      debugLog('DEBUG', 'Sidebar inserted successfully');
 
       // Add header actions
       this.addHeaderActions();
@@ -743,24 +830,24 @@
       // Check if wrapper already exists
       const existingWrapper = document.querySelector('.lmao-header-wrapper');
       if (existingWrapper) {
-        console.log('[LMAO] Header wrapper already exists, skipping');
+        debugLog('DEBUG', 'Header wrapper already exists, skipping');
         return;
       }
 
       // Find the header area
       const heading = findHeading();
       if (!heading) {
-        console.log('[LMAO] Heading not found');
+        debugLog('ERROR', 'Heading not found for header actions');
         return;
       }
 
       // Check if heading is already inside a wrapper (safety check)
       if (heading.closest('.lmao-header-wrapper')) {
-        console.log('[LMAO] Heading already in wrapper, skipping');
+        debugLog('DEBUG', 'Heading already in wrapper, skipping');
         return;
       }
 
-      console.log('[LMAO] Found heading:', heading);
+      debugLog('DEBUG', 'Found heading, creating header wrapper');
 
       // Create wrapper div
       const headerWrapper = document.createElement('div');
@@ -777,7 +864,7 @@
       // Remove h1 from its current position and add to wrapper
       const parent = heading.parentElement;
       if (parent) {
-        console.log('[LMAO] Creating header wrapper');
+        debugLog('DEBUG', 'Creating header wrapper with actions');
 
         // Insert wrapper where h1 was
         parent.insertBefore(headerWrapper, heading);
@@ -788,9 +875,9 @@
         // Add header actions to wrapper
         headerWrapper.appendChild(headerActions);
 
-        console.log('[LMAO] Header wrapper created with h1 and actions');
+        debugLog('DEBUG', 'Header wrapper created successfully');
       } else {
-        console.log('[LMAO] No parent found for heading');
+        debugLog('ERROR', 'No parent found for heading element');
       }
     },
 
@@ -905,8 +992,32 @@
     return maps.find((m) => m.id === mapIdOrSlug || m.slug === mapIdOrSlug) || null;
   }
 
+  /**
+   * Loads the dev configuration from localStorage and updates CONFIG object.
+   */
+  function loadDevConfig() {
+    try {
+      const saved = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_INTERNAL_CONFIG);
+      if (saved) {
+        const parsedConfig = JSON.parse(saved);
+        // Merge saved config into CONFIG, preserving defaults for missing keys
+        if (parsedConfig.features) {
+          CONFIG.features = { ...CONFIG.features, ...parsedConfig.features };
+        }
+        debugLog('DEBUG', 'Loaded dev config from localStorage', CONFIG);
+      }
+    } catch (e) {
+      debugLog('ERROR', 'Failed to load dev config', e);
+    }
+  }
+
   function saveDevConfig() {
-    _unsafeWindow.localStorage.setItem(LOCALSTORAGE_INTERNAL_CONFIG, JSON.stringify(CONFIG));
+    try {
+      _unsafeWindow.localStorage.setItem(LOCALSTORAGE_INTERNAL_CONFIG, JSON.stringify(CONFIG));
+      debugLog('DEBUG', 'Saved dev config to localStorage', CONFIG);
+    } catch (e) {
+      debugLog('ERROR', 'Failed to save dev config', e);
+    }
   }
 
   /**
@@ -915,7 +1026,7 @@
    * @returns {Promise<Object>} - The map info object
    */
   async function fetchMapInfo(url) {
-    debugLog('fetching map info from API with URL', url);
+    debugLog('DEBUG', 'fetching map info from API with URL', url);
     return new Promise((resolve, reject) => {
       if (typeof _GM_xmlhttpRequest !== 'function') {
         console.error('GM_xmlhttpRequest is not available');
@@ -928,11 +1039,11 @@
         method: 'GET',
         url,
         onload: (response) => {
-          debugLog('onload', url, response.status);
+          debugLog('TRACE', 'onload', url, response.status);
           if (response.status === 200 || response.status === 404) {
             try {
               const mapInfo = JSON.parse(response.responseText);
-              debugLog('fetched map info', mapInfo);
+              debugLog('DEBUG', 'fetched map info', mapInfo);
               resolve(mapInfo);
             } catch (e) {
               console.error('failed to parse map info response', e);
@@ -963,7 +1074,7 @@
       const savedMapInfo = _unsafeWindow.localStorage.getItem(localStorageMapInfoKey);
       if (savedMapInfo) {
         const mapInfoFromLocalStorage = JSON.parse(savedMapInfo);
-        debugLog('loaded from localStorage', mapInfoFromLocalStorage);
+        debugLog('TRACE', 'loaded from localStorage', mapInfoFromLocalStorage);
         return mapInfoFromLocalStorage;
       }
     }
@@ -983,7 +1094,7 @@
       const mapInfo = await getMapInfo(mapId);
       return mapInfo && mapInfo.mapFound === true;
     } catch (err) {
-      debugLog('error', err);
+      debugLog('ERROR', 'Failed to fetch and cache learnable meta', err);
       return false;
     }
   }
@@ -1000,10 +1111,10 @@
     if (!data) return false;
     try {
       const obj = JSON.parse(data);
-      debugLog('loaded from localstorage', obj);
+      debugLog('TRACE', 'loaded from localstorage', obj);
       return obj && obj.mapFound === true;
     } catch (err) {
-      console.error('error parsing', err);
+      debugLog('ERROR', 'Error parsing localStorage data', err);
       return false;
     }
   }
@@ -1030,7 +1141,7 @@
       if (typeof parsed === 'object' && parsed !== null) return parsed;
       return {};
     } catch (e) {
-      debugLog('Failed to load meta region cache', e);
+      debugLog('ERROR', 'Failed to load meta region cache', e);
       return {};
     }
   }
@@ -1043,7 +1154,7 @@
     try {
       _unsafeWindow.localStorage.setItem(LOCALSTORAGE_ADDITIONAL_MAP_INFO, JSON.stringify(cache));
     } catch (e) {
-      debugLog('Failed to save meta region cache', e);
+      debugLog('ERROR', 'Failed to save meta region cache', e);
     }
   }
 
@@ -1054,7 +1165,7 @@
    */
   async function fetchMetaRegionsFromAPI(mapId) {
     const url = `https://learnablemeta.com/api/maps?geoguessrId=${mapId}`;
-    debugLog('Fetching meta regions from API', url);
+    debugLog('DEBUG', 'Fetching meta regions from API', url);
     return new Promise((resolve, reject) => {
       if (typeof _GM_xmlhttpRequest !== 'function') {
         reject('GM_xmlhttpRequest is not available');
@@ -1068,15 +1179,15 @@
             try {
               const responseData = JSON.parse(response.responseText);
               const data = responseData[0] || {}; // should always be ONE item in the array
-              debugLog('Meta regions response', data);
+              debugLog('DEBUG', 'Meta regions response', data);
               if (Array.isArray(data.regions)) {
-                console.log('[LMAO]  !!!! isArray:', data.regions);
+                debugLog('DEBUG', 'Found regions array:', data.regions);
                 resolve(data.regions);
               } else {
                 resolve([]);
               }
             } catch (e) {
-              debugLog('Failed to parse meta regions response', e);
+              debugLog('ERROR', 'Failed to parse meta regions response', e);
               resolve([]);
             }
           } else if (response.status === 404) {
@@ -1104,19 +1215,19 @@
    */
   async function preloadMetaRegions(learnableMetaMapIds) {
     const cache = loadMetaRegionCache();
-    debugLog('Loaded meta region cache', cache);
+    debugLog('DEBUG', 'Loaded meta region cache', cache);
     let updated = false;
     for (const mapId of learnableMetaMapIds) {
       if (!cache.hasOwnProperty(mapId)) {
         try {
           const regions = await fetchMetaRegionsFromAPI(mapId);
           if (regions?.length) {
-            debugLog('Found regions for', mapId, regions);
+            debugLog('INFO', 'Found regions for', mapId, regions);
             cache[mapId] = { regions };
             updated = true;
           }
         } catch (e) {
-          debugLog('Failed to fetch regions for', mapId, e);
+          debugLog('ERROR', 'Failed to fetch regions for', mapId, e);
         }
       }
     }
@@ -1130,7 +1241,7 @@
   }
 
   function saveUserTags(userTags) {
-    debugLog(userTags);
+    debugLog('DEBUG', 'Saving user tags', userTags);
     _unsafeWindow.localStorage.setItem(LOCALSTORAGE_USER_TAGS_KEY, JSON.stringify(userTags));
   }
 
@@ -1148,13 +1259,13 @@
         defaultTagVisibility
       );
     } catch (err) {
-      debugLog('error', err);
+      debugLog('ERROR', 'Failed to load tag visibility', err);
       return defaultTagVisibility;
     }
   }
 
   function saveTagVisibility(state) {
-    debugLog(state);
+    debugLog('DEBUG', 'Saving tag visibility', state);
     _unsafeWindow.localStorage.setItem(LOCALSTORAGE_TAG_VISIBILITY_KEY, JSON.stringify(state));
   }
 
@@ -1168,13 +1279,13 @@
         }
       );
     } catch (err) {
-      debugLog('error', err);
+      debugLog('ERROR', 'Failed to load filter collapse state', err);
       return { user: false, api: true, meta: false };
     }
   }
 
   function saveFilterCollapse(state) {
-    debugLog(state);
+    debugLog('DEBUG', 'Saving filter collapse state', state);
     _unsafeWindow.localStorage.setItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY, JSON.stringify(state));
   }
 
@@ -1182,13 +1293,13 @@
     try {
       return JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_SELECTED_TAGS_KEY)) || [];
     } catch (err) {
-      debugLog('error loading selected tags', err);
+      debugLog('ERROR', 'Failed to load selected tags', err);
       return [];
     }
   }
 
   function saveSelectedTags(selectedTags) {
-    debugLog('saving selected tags', selectedTags);
+    debugLog('DEBUG', 'Saving selected tags', selectedTags);
     _unsafeWindow.localStorage.setItem(
       LOCALSTORAGE_SELECTED_TAGS_KEY,
       JSON.stringify(selectedTags)
@@ -1206,7 +1317,7 @@
         // Future keys will be added here
       };
     } catch (e) {
-      debugLog('Failed to load LMAO state', e);
+      debugLog('ERROR', 'Failed to load LMAO state', e);
       return { searchCriteria: ['name', 'description', 'creator', 'tags'] };
     }
   }
@@ -1214,9 +1325,9 @@
   function saveLMAOState(state) {
     try {
       _unsafeWindow.localStorage.setItem(LOCALSTORAGE_STATE_KEY, JSON.stringify(state));
-      debugLog('LMAO state saved', state);
+      debugLog('DEBUG', 'LMAO state saved', state);
     } catch (e) {
-      debugLog('Failed to save LMAO state', e);
+      debugLog('ERROR', 'Failed to save LMAO state', e);
     }
   }
 
@@ -1264,7 +1375,7 @@
       link.click();
       document.body.removeChild(link);
 
-      debugLog('Settings exported successfully');
+      debugLog('INFO', 'Settings exported successfully');
     } catch (error) {
       console.error('[LMAO] Failed to export settings:', error);
       alert('Failed to export settings. Check console for details.');
@@ -1288,7 +1399,7 @@
         }
       });
 
-      debugLog('Settings imported successfully');
+      debugLog('INFO', 'Settings imported successfully');
       alert('Settings imported successfully! Please refresh the page to see changes.');
     } catch (error) {
       console.error('[LMAO] Failed to import settings:', error);
@@ -2192,7 +2303,7 @@
             rmBtn.onclick = (e) => {
               e.preventDefault();
               e.stopPropagation();
-              debugLog('patchTeasersWithControls', 'Removing tag', tag, 'from map', map.id);
+              debugLog('DEBUG', 'Removing tag', tag, 'from map', map.id);
               AppState.removeUserTag(map, tag);
             };
             tagDiv.appendChild(rmBtn);
@@ -2272,27 +2383,57 @@
 
   // --- DOM FINDERS ---
   function findGridContainer() {
-    return document.querySelector('div[class*="grid_grid__"]');
+    const grid = document.querySelector('div[class*="grid_grid__"]');
+    if (grid) {
+      debugLog('TRACE', 'Found grid container');
+    } else {
+      debugLog('ERROR', 'Grid container not found');
+    }
+    return grid;
   }
 
   function findMapTeaserElements(grid) {
-    return Array.from(grid.querySelectorAll('li > a[class*="map-teaser_mapTeaser__"]'));
+    const teasers = Array.from(grid.querySelectorAll('li > a[class*="map-teaser_mapTeaser__"]'));
+    debugLog('TRACE', `Found ${teasers.length} map teaser elements`);
+    return teasers;
   }
 
   function findTagsContainer(mapTeaser) {
-    return mapTeaser.querySelector('div[class*="map-teaser_tagsContainer__"]');
+    const container = mapTeaser.querySelector('div[class*="map-teaser_tagsContainer__"]');
+    if (!container) {
+      debugLog('WARN', 'Tags container not found for map teaser');
+    }
+    return container;
   }
 
   function findLikesMapDiv() {
-    return document.querySelector('div[class*="likes_map__"]');
+    const likesDiv = document.querySelector('div[class*="likes_map__"]');
+    if (likesDiv) {
+      debugLog('TRACE', 'Found likes map div');
+    } else {
+      debugLog('ERROR', 'Likes map div not found');
+    }
+    return likesDiv;
   }
 
   function findHeading() {
-    return document.querySelector('h1[class*="headline_heading__"]');
+    const heading = document.querySelector('h1[class*="headline_heading__"]');
+    if (heading) {
+      debugLog('TRACE', 'Found heading element');
+    } else {
+      debugLog('ERROR', 'Heading element not found');
+    }
+    return heading;
   }
 
   function findFullHeightContainer() {
-    return document.querySelector('main');
+    const container = document.querySelector('main');
+    if (container) {
+      debugLog('TRACE', 'Found main container');
+    } else {
+      debugLog('ERROR', 'Main container not found');
+    }
+    return container;
   }
 
   /**
@@ -2321,10 +2462,13 @@
 
   // --- MAIN ---
   async function init() {
+    debugLog('INFO', 'Starting LMAO initialization');
     showLoadingIndicator();
     try {
       const userTags = loadUserTags();
+      debugLog('INFO', `Loaded ${Object.keys(userTags).length} user tag entries from localStorage`);
       const maps = await fetchAllLikedMaps();
+      debugLog('INFO', `Fetched ${maps.length} liked maps from API`);
       // Group tags for filter UI
       const userTagsSet = new Set();
       const apiTagsSet = new Set();
@@ -2345,12 +2489,14 @@
       }
 
       // get regions from Learnable Meta API
+      debugLog('INFO', `Processing ${learnableMetaMapIds.length} Learnable Meta maps for regions`);
       const metaRegionCache = await preloadMetaRegions(learnableMetaMapIds);
       Object.values(metaRegionCache).forEach((regionData) => {
         if (regionData && Array.isArray(regionData.regions)) {
           regionData.regions.forEach((region) => metaTagsSet.add(region));
         }
       });
+      debugLog('INFO', `Found ${metaTagsSet.size} total meta tags (including regions)`);
 
       // Initialize AppState
       AppState.maps = maps;
@@ -2391,7 +2537,7 @@
       grid.style.flexGrow = '1';
       AppState.rerender();
 
-      console.log('[LMAO] Initialization complete.');
+      debugLog('INFO', 'LMAO initialization completed successfully');
     } finally {
       removeLoadingIndicator();
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -2447,13 +2593,13 @@
         }
         if (!gridInitialized) {
           gridInitialized = true;
-          console.log('[LMAO] initializing');
+          debugLog('INFO', 'Grid found, initializing LMAO');
           init();
 
           saveDevConfig();
         }
       } catch (e) {
-        console.error('[LMAO] Error during tryInit:', e);
+        debugLog('ERROR', 'Error during tryInit:', e);
       }
     }
 
