@@ -755,7 +755,12 @@
     userTagsList: [],
     apiTagsList: [],
     metaTagsList: [],
-    selectedTags: [],
+    selectedTags: {
+      userTags: [],
+      regionTags: [],
+      apiTags: [],
+      learnableMeta: false
+    },
     currentUserTags: {},
     tagVisibility: {},
     filterCollapse: {},
@@ -1362,7 +1367,12 @@
           regions: false,
           api: true
         },
-        selectedTags: []
+        selectedTags: {
+          userTags: [],
+          regionTags: [],
+          apiTags: [],
+          learnableMeta: false
+        }
       };
       const raw = _unsafeWindow.localStorage.getItem(LOCALSTORAGE_STATE_KEY);
       if (!raw) return defaultState; // Default: all enabled
@@ -1389,6 +1399,122 @@
     saveLMAOState(currentState);
   }
 
+  // --- SELECTED TAGS HELPERS ---
+
+  /**
+   * Gets all selected tags as a flat array for backward compatibility
+   * @returns {string[]} Array of all selected tag names
+   */
+  function getAllSelectedTags() {
+    const { userTags, regionTags, apiTags, learnableMeta } = AppState.selectedTags;
+    const allTags = [...userTags, ...regionTags, ...apiTags];
+    if (learnableMeta) {
+      allTags.push('Learnable Meta');
+    }
+    return allTags;
+  }
+
+  /**
+   * Gets the count of all selected tags
+   * @returns {number} Total number of selected tags
+   */
+  function getSelectedTagsCount() {
+    const { userTags, regionTags, apiTags, learnableMeta } = AppState.selectedTags;
+    let count = userTags.length + regionTags.length + apiTags.length;
+    if (learnableMeta) count++;
+    return count;
+  }
+
+  /**
+   * Checks if a tag is selected in a specific category
+   * @param {string} tag - Tag name to check
+   * @param {string} category - Category to check ('user', 'region', 'api', 'learnableMeta')
+   * @returns {boolean} True if tag is selected in that category
+   */
+  function isTagSelected(tag, category) {
+    switch (category) {
+      case 'user':
+        return AppState.selectedTags.userTags.includes(tag);
+      case 'region':
+        return AppState.selectedTags.regionTags.includes(tag);
+      case 'api':
+        return AppState.selectedTags.apiTags.includes(tag);
+      case 'learnableMeta':
+        return tag === 'Learnable Meta' && AppState.selectedTags.learnableMeta;
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Adds a tag to the selected tags in the specified category
+   * @param {string} tag - Tag name to add
+   * @param {string} category - Category to add to ('user', 'region', 'api', 'learnableMeta')
+   */
+  function addSelectedTag(tag, category) {
+    switch (category) {
+      case 'user':
+        if (!AppState.selectedTags.userTags.includes(tag)) {
+          AppState.selectedTags.userTags.push(tag);
+        }
+        break;
+      case 'region':
+        if (!AppState.selectedTags.regionTags.includes(tag)) {
+          AppState.selectedTags.regionTags.push(tag);
+        }
+        break;
+      case 'api':
+        if (!AppState.selectedTags.apiTags.includes(tag)) {
+          AppState.selectedTags.apiTags.push(tag);
+        }
+        break;
+      case 'learnableMeta':
+        AppState.selectedTags.learnableMeta = true;
+        break;
+    }
+  }
+
+  /**
+   * Clears all selected tags
+   */
+  function clearAllSelectedTags() {
+    AppState.selectedTags.userTags = [];
+    AppState.selectedTags.regionTags = [];
+    AppState.selectedTags.apiTags = [];
+    AppState.selectedTags.learnableMeta = false;
+  }
+
+  /**
+   * Removes a tag from the selected tags in the specified category
+   * @param {string} tag - Tag name to remove
+   * @param {string} category - Category to remove from ('user', 'region', 'api', 'learnableMeta')
+   */
+  function removeSelectedTag(tag, category) {
+    switch (category) {
+      case 'user':
+        const userIndex = AppState.selectedTags.userTags.indexOf(tag);
+        if (userIndex > -1) {
+          AppState.selectedTags.userTags.splice(userIndex, 1);
+        }
+        break;
+      case 'region':
+        const regionIndex = AppState.selectedTags.regionTags.indexOf(tag);
+        if (regionIndex > -1) {
+          AppState.selectedTags.regionTags.splice(regionIndex, 1);
+        }
+        break;
+      case 'api':
+        const apiIndex = AppState.selectedTags.apiTags.indexOf(tag);
+        if (apiIndex > -1) {
+          AppState.selectedTags.apiTags.splice(apiIndex, 1);
+        }
+        break;
+      case 'learnableMeta':
+        AppState.selectedTags.learnableMeta = false;
+        break;
+    }
+  }
+
   // --- TAG ORDER MANAGEMENT ---
   function saveTagOrder(tagOrder) {
     const currentState = loadLMAOState();
@@ -1399,7 +1525,7 @@
   /**
    * Sorts tags according to saved order, putting unordered tags at the end
    * @param {string[]} tags - Array of tag names
-   * @param {string} category - Category key ('user', 'api', 'meta')
+   * @param {string} category - Category key ('user', 'api', 'region')
    * @returns {string[]} Sorted array of tags
    */
   function sortTagsByOrder(tags, category) {
@@ -1706,13 +1832,13 @@
     const sortedTags = sortTagsByOrder(tags, category);
 
     sortedTags.forEach((tag, index) => {
-      const chip = createTagChip(tag, selectedTags.includes(tag), category, (selected) => {
-        if (selected && !selectedTags.includes(tag)) {
-          selectedTags.push(tag);
-        } else if (!selected && selectedTags.includes(tag)) {
-          selectedTags.splice(selectedTags.indexOf(tag), 1);
+      const chip = createTagChip(tag, isTagSelected(tag, category), category, (selected) => {
+        if (selected) {
+          addSelectedTag(tag, category);
+        } else {
+          removeSelectedTag(tag, category);
         }
-        onChange([...selectedTags]);
+        onChange(AppState.selectedTags);
       });
 
       // Add drag and drop functionality in edit mode
@@ -1789,13 +1915,13 @@
   function rebuildTagGroup(container, tags, selectedTags, onChange, category) {
     container.innerHTML = '';
     tags.forEach((tag, index) => {
-      const chip = createTagChip(tag, selectedTags.includes(tag), category, (selected) => {
-        if (selected && !selectedTags.includes(tag)) {
-          selectedTags.push(tag);
-        } else if (!selected && selectedTags.includes(tag)) {
-          selectedTags.splice(selectedTags.indexOf(tag), 1);
+      const chip = createTagChip(tag, isTagSelected(tag, category), category, (selected) => {
+        if (selected) {
+          addSelectedTag(tag, category);
+        } else {
+          removeSelectedTag(tag, category);
         }
-        onChange([...selectedTags]);
+        onChange(AppState.selectedTags);
       });
 
       if (AppState.editMode) {
@@ -2032,7 +2158,8 @@
     smallClearBtn.innerHTML = '🧹'; // Broom icon for cleaning tag filters
     smallClearBtn.className = 'lmao-small-clear-button';
     smallClearBtn.onclick = () => {
-      AppState.updateSelectedTags([]);
+      clearAllSelectedTags();
+      AppState.updateSelectedTags(AppState.selectedTags);
     };
     const smallClearWithTooltip = createTooltip(smallClearBtn, 'Clear Tag Filters', true);
 
@@ -2043,12 +2170,10 @@
     if (hasLearnableMeta) {
       const learnableMetaCheckbox = createCheckbox(
         'Learnable Meta',
-        AppState.selectedTags?.includes('Learnable Meta'),
+        AppState.selectedTags?.learnableMeta || false,
         (checked) => {
-          const newTags = checked
-            ? [...AppState.selectedTags, 'Learnable Meta']
-            : AppState.selectedTags.filter((tag) => tag !== 'Learnable Meta');
-          AppState.updateSelectedTags(newTags);
+          AppState.selectedTags.learnableMeta = checked;
+          AppState.updateSelectedTags(AppState.selectedTags);
         },
         ['lmao-no-left-margin']
       );
@@ -2326,7 +2451,8 @@
     clearFiltersBtn.innerHTML = '🗑️'; // Trash icon
     clearFiltersBtn.className = 'lmao-header-button lmao-clear-button';
     clearFiltersBtn.onclick = () => {
-      AppState.updateSelectedTags([]);
+      clearAllSelectedTags();
+      AppState.updateSelectedTags(AppState.selectedTags);
       AppState.updateSearchQuery('');
       // Also clear the search input
       const searchInput = document.querySelector('.lmao-search-input');
@@ -2441,13 +2567,14 @@
       let shouldShow = true;
 
       // Tag filtering
-      if (AppState.selectedTags.length > 0) {
+      const allSelectedTags = getAllSelectedTags();
+      if (getSelectedTagsCount() > 0) {
         if (AppState.filterMode === 'ALL') {
-          if (!AppState.selectedTags.every((tag) => allTags.includes(tag))) {
+          if (!allSelectedTags.every((tag) => allTags.includes(tag))) {
             shouldShow = false;
           }
         } else {
-          if (!AppState.selectedTags.some((tag) => allTags.includes(tag))) {
+          if (!allSelectedTags.some((tag) => allTags.includes(tag))) {
             shouldShow = false;
           }
         }
