@@ -2431,8 +2431,10 @@
       if (
         isLearnableMetaFromCacheOrLocalStorage(mapKey, AppState.learnableMetaCache) &&
         !allTags.includes('Learnable Meta')
-      )
+      ) {
         allTags.push('Learnable Meta');
+      }
+
       if (map.isUserMap === false) allTags.push('Official');
 
       // Filter logic - combine tag filtering and search filtering
