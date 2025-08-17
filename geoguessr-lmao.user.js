@@ -56,15 +56,15 @@
     .lmao-map-teaser_tag.user-tag {
       color: #fff;
       border-color: var(--ds-color-blue-80);
-      background: color-mix(in srgb, var(--ds-color-blue-50) 30%, transparent);
+      background: color-mix(in srgb, var(--ds-color-blue-50) 50%, transparent);
     }
     .lmao-map-teaser_tag.lmao-learnable-meta {
       border-color: var(--ds-color-green-80);
-      background: color-mix(in srgb, var(--ds-color-green-50) 30%, transparent);
+      background: color-mix(in srgb, var(--ds-color-green-70) 50%, transparent);
     }
     .lmao-map-teaser_tag.lmao-region {
-      border-color: var(--ds-color-white-40);
-      background: color-mix(in srgb, var(--ds-color-green-80) 30%, transparent);
+      border-color: var(--ds-color-green-80);
+      background: color-mix(in srgb, var(--ds-color-green-80) 50%, transparent);
     }
     .lmao-tag-remove-btn {
       margin-left: 0.2em;
