@@ -565,6 +565,15 @@
     ERROR: 4 // Errors only
   };
 
+  // Convenient object for cleaner debugLog calls: debugLog(LogLevel.DEBUG, ...)
+  const LogLevel = {
+    TRACE: 'TRACE',
+    DEBUG: 'DEBUG',
+    INFO: 'INFO',
+    WARN: 'WARN',
+    ERROR: 'ERROR'
+  };
+
   /**
    * Gets the current log level from CONFIG object.
    * @returns {number} Current log level
@@ -581,12 +590,12 @@
    * Helper function to set the log level for debugging.
    * Updates the CONFIG object and saves it to lmaoDevConfig localStorage.
    * Call this from the browser console to change log level.
-   * @param {string} level - One of: 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'
+   * @param {string} level - One of: LogLevel.TRACE, LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR
    * @example
    * // In browser console:
-   * setLMAOLogLevel('DEBUG')  // Show debug and higher
-   * setLMAOLogLevel('TRACE')  // Show all logs (most verbose)
-   * setLMAOLogLevel('ERROR')  // Show only errors
+   * setLMAOLogLevel(LogLevel.DEBUG)  // Show debug and higher
+   * setLMAOLogLevel(LogLevel.TRACE)  // Show all logs (most verbose)
+   * setLMAOLogLevel(LogLevel.ERROR)  // Show only errors
    */
   function setLMAOLogLevel(level) {
     if (!LOG_LEVELS.hasOwnProperty(level)) {
@@ -611,11 +620,13 @@
 
   /**
    * Debug logger for LMAO with log levels. Uses console methods based on log level.
-   * @param {string} level - Log level: 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'
+   * @param {string} level - Log level: LogLevel.TRACE, LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR
    * @param {...any} args - Arguments to log
    * @example
-   * debugLog('TRACE', 'Finding DOM element');
-   * debugLog('ERROR', 'Failed to fetch data', error);
+   * debugLog(LogLevel.TRACE, 'Finding DOM element');
+   * debugLog(LogLevel.ERROR, 'Failed to fetch data', error);
+   * // Legacy string syntax still works:
+   * debugLog(LogLevel.DEBUG, 'Some debug info');
    */
   function debugLog(level, ...args) {
     if (!CONFIG.features.debugMode) return;
@@ -642,17 +653,17 @@
 
     // Use appropriate console method based on log level
     switch (level) {
-      case 'ERROR':
+      case LogLevel.ERROR:
         console.error(prefix, ...args);
         break;
-      case 'WARN':
+      case LogLevel.WARN:
         console.warn(prefix, ...args);
         break;
-      case 'INFO':
+      case LogLevel.INFO:
         console.info(prefix, ...args);
         break;
-      case 'DEBUG':
-      case 'TRACE':
+      case LogLevel.DEBUG:
+      case LogLevel.TRACE:
       default:
         console.log(prefix, ...args);
         break;
@@ -780,7 +791,7 @@
     },
 
     rebuildControls() {
-      debugLog('DEBUG', 'Rebuilding controls UI');
+      debugLog(LogLevel.DEBUG, 'Rebuilding controls UI');
       const newControls = createControlsUI();
 
       // Find the proper container for the sidebar
@@ -792,17 +803,17 @@
         const likesMapDiv = grid.closest('div[class*="likes_map__"]');
         if (likesMapDiv) {
           targetContainer = likesMapDiv;
-          debugLog('DEBUG', 'Using likes_map div as target container');
+          debugLog(LogLevel.DEBUG, 'Using likes_map div as target container');
         }
       }
 
       if (!targetContainer) {
         targetContainer = findFullHeightContainer();
-        debugLog('DEBUG', 'Falling back to main container');
+        debugLog(LogLevel.DEBUG, 'Falling back to main container');
       }
 
       if (!targetContainer) {
-        debugLog('ERROR', 'No suitable container found for sidebar');
+        debugLog(LogLevel.ERROR, 'No suitable container found for sidebar');
         return;
       }
 
@@ -820,7 +831,7 @@
       }
 
       this.controlsDiv = newControls;
-      debugLog('DEBUG', 'Sidebar inserted successfully');
+      debugLog(LogLevel.DEBUG, 'Sidebar inserted successfully');
 
       // Add header actions
       this.addHeaderActions();
@@ -830,24 +841,24 @@
       // Check if wrapper already exists
       const existingWrapper = document.querySelector('.lmao-header-wrapper');
       if (existingWrapper) {
-        debugLog('DEBUG', 'Header wrapper already exists, skipping');
+        debugLog(LogLevel.DEBUG, 'Header wrapper already exists, skipping');
         return;
       }
 
       // Find the header area
       const heading = findHeading();
       if (!heading) {
-        debugLog('ERROR', 'Heading not found for header actions');
+        debugLog(LogLevel.ERROR, 'Heading not found for header actions');
         return;
       }
 
       // Check if heading is already inside a wrapper (safety check)
       if (heading.closest('.lmao-header-wrapper')) {
-        debugLog('DEBUG', 'Heading already in wrapper, skipping');
+        debugLog(LogLevel.DEBUG, 'Heading already in wrapper, skipping');
         return;
       }
 
-      debugLog('DEBUG', 'Found heading, creating header wrapper');
+      debugLog(LogLevel.DEBUG, 'Found heading, creating header wrapper');
 
       // Create wrapper div
       const headerWrapper = document.createElement('div');
@@ -864,7 +875,7 @@
       // Remove h1 from its current position and add to wrapper
       const parent = heading.parentElement;
       if (parent) {
-        debugLog('DEBUG', 'Creating header wrapper with actions');
+        debugLog(LogLevel.DEBUG, 'Creating header wrapper with actions');
 
         // Insert wrapper where h1 was
         parent.insertBefore(headerWrapper, heading);
@@ -875,9 +886,9 @@
         // Add header actions to wrapper
         headerWrapper.appendChild(headerActions);
 
-        debugLog('DEBUG', 'Header wrapper created successfully');
+        debugLog(LogLevel.DEBUG, 'Header wrapper created successfully');
       } else {
-        debugLog('ERROR', 'No parent found for heading element');
+        debugLog(LogLevel.ERROR, 'No parent found for heading element');
       }
     },
 
@@ -1004,19 +1015,19 @@
         if (parsedConfig.features) {
           CONFIG.features = { ...CONFIG.features, ...parsedConfig.features };
         }
-        debugLog('DEBUG', 'Loaded dev config from localStorage', CONFIG);
+        debugLog(LogLevel.DEBUG, 'Loaded dev config from localStorage', CONFIG);
       }
     } catch (e) {
-      debugLog('ERROR', 'Failed to load dev config', e);
+      debugLog(LogLevel.ERROR, 'Failed to load dev config', e);
     }
   }
 
   function saveDevConfig() {
     try {
       _unsafeWindow.localStorage.setItem(LOCALSTORAGE_INTERNAL_CONFIG, JSON.stringify(CONFIG));
-      debugLog('DEBUG', 'Saved dev config to localStorage', CONFIG);
+      debugLog(LogLevel.DEBUG, 'Saved dev config to localStorage', CONFIG);
     } catch (e) {
-      debugLog('ERROR', 'Failed to save dev config', e);
+      debugLog(LogLevel.ERROR, 'Failed to save dev config', e);
     }
   }
 
@@ -1026,7 +1037,7 @@
    * @returns {Promise<Object>} - The map info object
    */
   async function fetchMapInfo(url) {
-    debugLog('DEBUG', 'fetching map info from API with URL', url);
+    debugLog(LogLevel.DEBUG, 'fetching map info from API with URL', url);
     return new Promise((resolve, reject) => {
       if (typeof _GM_xmlhttpRequest !== 'function') {
         console.error('GM_xmlhttpRequest is not available');
@@ -1039,11 +1050,11 @@
         method: 'GET',
         url,
         onload: (response) => {
-          debugLog('TRACE', 'onload', url, response.status);
+          debugLog(LogLevel.TRACE, 'onload', url, response.status);
           if (response.status === 200 || response.status === 404) {
             try {
               const mapInfo = JSON.parse(response.responseText);
-              debugLog('DEBUG', 'fetched map info', mapInfo);
+              debugLog(LogLevel.DEBUG, 'fetched map info', mapInfo);
               resolve(mapInfo);
             } catch (e) {
               console.error('failed to parse map info response', e);
@@ -1074,7 +1085,7 @@
       const savedMapInfo = _unsafeWindow.localStorage.getItem(localStorageMapInfoKey);
       if (savedMapInfo) {
         const mapInfoFromLocalStorage = JSON.parse(savedMapInfo);
-        debugLog('TRACE', 'loaded from localStorage', mapInfoFromLocalStorage);
+        debugLog(LogLevel.TRACE, 'loaded from localStorage', mapInfoFromLocalStorage);
         return mapInfoFromLocalStorage;
       }
     }
@@ -1094,7 +1105,7 @@
       const mapInfo = await getMapInfo(mapId);
       return mapInfo && mapInfo.mapFound === true;
     } catch (err) {
-      debugLog('ERROR', 'Failed to fetch and cache learnable meta', err);
+      debugLog(LogLevel.ERROR, 'Failed to fetch and cache learnable meta', err);
       return false;
     }
   }
@@ -1111,10 +1122,10 @@
     if (!data) return false;
     try {
       const obj = JSON.parse(data);
-      debugLog('TRACE', 'loaded from localstorage', obj);
+      debugLog(LogLevel.TRACE, 'loaded from localstorage', obj);
       return obj && obj.mapFound === true;
     } catch (err) {
-      debugLog('ERROR', 'Error parsing localStorage data', err);
+      debugLog(LogLevel.ERROR, 'Error parsing localStorage data', err);
       return false;
     }
   }
@@ -1141,7 +1152,7 @@
       if (typeof parsed === 'object' && parsed !== null) return parsed;
       return {};
     } catch (e) {
-      debugLog('ERROR', 'Failed to load meta region cache', e);
+      debugLog(LogLevel.ERROR, 'Failed to load meta region cache', e);
       return {};
     }
   }
@@ -1154,7 +1165,7 @@
     try {
       _unsafeWindow.localStorage.setItem(LOCALSTORAGE_ADDITIONAL_MAP_INFO, JSON.stringify(cache));
     } catch (e) {
-      debugLog('ERROR', 'Failed to save meta region cache', e);
+      debugLog(LogLevel.ERROR, 'Failed to save meta region cache', e);
     }
   }
 
@@ -1165,7 +1176,7 @@
    */
   async function fetchMetaRegionsFromAPI(mapId) {
     const url = `https://learnablemeta.com/api/maps?geoguessrId=${mapId}`;
-    debugLog('DEBUG', 'Fetching meta regions from API', url);
+    debugLog(LogLevel.DEBUG, 'Fetching meta regions from API', url);
     return new Promise((resolve, reject) => {
       if (typeof _GM_xmlhttpRequest !== 'function') {
         reject('GM_xmlhttpRequest is not available');
@@ -1179,15 +1190,15 @@
             try {
               const responseData = JSON.parse(response.responseText);
               const data = responseData[0] || {}; // should always be ONE item in the array
-              debugLog('DEBUG', 'Meta regions response', data);
+              debugLog(LogLevel.DEBUG, 'Meta regions response', data);
               if (Array.isArray(data.regions)) {
-                debugLog('DEBUG', 'Found regions array:', data.regions);
+                debugLog(LogLevel.DEBUG, 'Found regions array:', data.regions);
                 resolve(data.regions);
               } else {
                 resolve([]);
               }
             } catch (e) {
-              debugLog('ERROR', 'Failed to parse meta regions response', e);
+              debugLog(LogLevel.ERROR, 'Failed to parse meta regions response', e);
               resolve([]);
             }
           } else if (response.status === 404) {
@@ -1215,19 +1226,19 @@
    */
   async function preloadMetaRegions(learnableMetaMapIds) {
     const cache = loadMetaRegionCache();
-    debugLog('DEBUG', 'Loaded meta region cache', cache);
+    debugLog(LogLevel.DEBUG, 'Loaded meta region cache', cache);
     let updated = false;
     for (const mapId of learnableMetaMapIds) {
       if (!cache.hasOwnProperty(mapId)) {
         try {
           const regions = await fetchMetaRegionsFromAPI(mapId);
           if (regions?.length) {
-            debugLog('INFO', 'Found regions for', mapId, regions);
+            debugLog(LogLevel.INFO, 'Found regions for', mapId, regions);
             cache[mapId] = { regions };
             updated = true;
           }
         } catch (e) {
-          debugLog('ERROR', 'Failed to fetch regions for', mapId, e);
+          debugLog(LogLevel.ERROR, 'Failed to fetch regions for', mapId, e);
         }
       }
     }
@@ -1241,7 +1252,7 @@
   }
 
   function saveUserTags(userTags) {
-    debugLog('DEBUG', 'Saving user tags', userTags);
+    debugLog(LogLevel.DEBUG, 'Saving user tags', userTags);
     _unsafeWindow.localStorage.setItem(LOCALSTORAGE_USER_TAGS_KEY, JSON.stringify(userTags));
   }
 
@@ -1259,13 +1270,13 @@
         defaultTagVisibility
       );
     } catch (err) {
-      debugLog('ERROR', 'Failed to load tag visibility', err);
+      debugLog(LogLevel.ERROR, 'Failed to load tag visibility', err);
       return defaultTagVisibility;
     }
   }
 
   function saveTagVisibility(state) {
-    debugLog('DEBUG', 'Saving tag visibility', state);
+    debugLog(LogLevel.DEBUG, 'Saving tag visibility', state);
     _unsafeWindow.localStorage.setItem(LOCALSTORAGE_TAG_VISIBILITY_KEY, JSON.stringify(state));
   }
 
@@ -1279,13 +1290,13 @@
         }
       );
     } catch (err) {
-      debugLog('ERROR', 'Failed to load filter collapse state', err);
+      debugLog(LogLevel.ERROR, 'Failed to load filter collapse state', err);
       return { user: false, api: true, meta: false };
     }
   }
 
   function saveFilterCollapse(state) {
-    debugLog('DEBUG', 'Saving filter collapse state', state);
+    debugLog(LogLevel.DEBUG, 'Saving filter collapse state', state);
     _unsafeWindow.localStorage.setItem(LOCALSTORAGE_FILTER_COLLAPSE_KEY, JSON.stringify(state));
   }
 
@@ -1293,13 +1304,13 @@
     try {
       return JSON.parse(_unsafeWindow.localStorage.getItem(LOCALSTORAGE_SELECTED_TAGS_KEY)) || [];
     } catch (err) {
-      debugLog('ERROR', 'Failed to load selected tags', err);
+      debugLog(LogLevel.ERROR, 'Failed to load selected tags', err);
       return [];
     }
   }
 
   function saveSelectedTags(selectedTags) {
-    debugLog('DEBUG', 'Saving selected tags', selectedTags);
+    debugLog(LogLevel.DEBUG, 'Saving selected tags', selectedTags);
     _unsafeWindow.localStorage.setItem(
       LOCALSTORAGE_SELECTED_TAGS_KEY,
       JSON.stringify(selectedTags)
@@ -1317,7 +1328,7 @@
         // Future keys will be added here
       };
     } catch (e) {
-      debugLog('ERROR', 'Failed to load LMAO state', e);
+      debugLog(LogLevel.ERROR, 'Failed to load LMAO state', e);
       return { searchCriteria: ['name', 'description', 'creator', 'tags'] };
     }
   }
@@ -1325,9 +1336,9 @@
   function saveLMAOState(state) {
     try {
       _unsafeWindow.localStorage.setItem(LOCALSTORAGE_STATE_KEY, JSON.stringify(state));
-      debugLog('DEBUG', 'LMAO state saved', state);
+      debugLog(LogLevel.DEBUG, 'LMAO state saved', state);
     } catch (e) {
-      debugLog('ERROR', 'Failed to save LMAO state', e);
+      debugLog(LogLevel.ERROR, 'Failed to save LMAO state', e);
     }
   }
 
@@ -1375,7 +1386,7 @@
       link.click();
       document.body.removeChild(link);
 
-      debugLog('INFO', 'Settings exported successfully');
+      debugLog(LogLevel.INFO, 'Settings exported successfully');
     } catch (error) {
       console.error('[LMAO] Failed to export settings:', error);
       alert('Failed to export settings. Check console for details.');
@@ -1399,7 +1410,7 @@
         }
       });
 
-      debugLog('INFO', 'Settings imported successfully');
+      debugLog(LogLevel.INFO, 'Settings imported successfully');
       alert('Settings imported successfully! Please refresh the page to see changes.');
     } catch (error) {
       console.error('[LMAO] Failed to import settings:', error);
@@ -2303,7 +2314,7 @@
             rmBtn.onclick = (e) => {
               e.preventDefault();
               e.stopPropagation();
-              debugLog('DEBUG', 'Removing tag', tag, 'from map', map.id);
+              debugLog(LogLevel.DEBUG, 'Removing tag', tag, 'from map', map.id);
               AppState.removeUserTag(map, tag);
             };
             tagDiv.appendChild(rmBtn);
@@ -2385,23 +2396,23 @@
   function findGridContainer() {
     const grid = document.querySelector('div[class*="grid_grid__"]');
     if (grid) {
-      debugLog('TRACE', 'Found grid container');
+      debugLog(LogLevel.TRACE, 'Found grid container');
     } else {
-      debugLog('ERROR', 'Grid container not found');
+      debugLog(LogLevel.ERROR, 'Grid container not found');
     }
     return grid;
   }
 
   function findMapTeaserElements(grid) {
     const teasers = Array.from(grid.querySelectorAll('li > a[class*="map-teaser_mapTeaser__"]'));
-    debugLog('TRACE', `Found ${teasers.length} map teaser elements`);
+    debugLog(LogLevel.TRACE, `Found ${teasers.length} map teaser elements`);
     return teasers;
   }
 
   function findTagsContainer(mapTeaser) {
     const container = mapTeaser.querySelector('div[class*="map-teaser_tagsContainer__"]');
     if (!container) {
-      debugLog('WARN', 'Tags container not found for map teaser');
+      debugLog(LogLevel.WARN, 'Tags container not found for map teaser');
     }
     return container;
   }
@@ -2409,9 +2420,9 @@
   function findLikesMapDiv() {
     const likesDiv = document.querySelector('div[class*="likes_map__"]');
     if (likesDiv) {
-      debugLog('TRACE', 'Found likes map div');
+      debugLog(LogLevel.TRACE, 'Found likes map div');
     } else {
-      debugLog('ERROR', 'Likes map div not found');
+      debugLog(LogLevel.ERROR, 'Likes map div not found');
     }
     return likesDiv;
   }
@@ -2419,9 +2430,9 @@
   function findHeading() {
     const heading = document.querySelector('h1[class*="headline_heading__"]');
     if (heading) {
-      debugLog('TRACE', 'Found heading element');
+      debugLog(LogLevel.TRACE, 'Found heading element');
     } else {
-      debugLog('ERROR', 'Heading element not found');
+      debugLog(LogLevel.ERROR, 'Heading element not found');
     }
     return heading;
   }
@@ -2429,9 +2440,9 @@
   function findFullHeightContainer() {
     const container = document.querySelector('main');
     if (container) {
-      debugLog('TRACE', 'Found main container');
+      debugLog(LogLevel.TRACE, 'Found main container');
     } else {
-      debugLog('ERROR', 'Main container not found');
+      debugLog(LogLevel.ERROR, 'Main container not found');
     }
     return container;
   }
@@ -2462,13 +2473,16 @@
 
   // --- MAIN ---
   async function init() {
-    debugLog('INFO', 'Starting LMAO initialization');
+    debugLog(LogLevel.INFO, 'Starting LMAO initialization');
     showLoadingIndicator();
     try {
       const userTags = loadUserTags();
-      debugLog('INFO', `Loaded ${Object.keys(userTags).length} user tag entries from localStorage`);
+      debugLog(
+        LogLevel.INFO,
+        `Loaded ${Object.keys(userTags).length} user tag entries from localStorage`
+      );
       const maps = await fetchAllLikedMaps();
-      debugLog('INFO', `Fetched ${maps.length} liked maps from API`);
+      debugLog(LogLevel.INFO, `Fetched ${maps.length} liked maps from API`);
       // Group tags for filter UI
       const userTagsSet = new Set();
       const apiTagsSet = new Set();
@@ -2489,14 +2503,17 @@
       }
 
       // get regions from Learnable Meta API
-      debugLog('INFO', `Processing ${learnableMetaMapIds.length} Learnable Meta maps for regions`);
+      debugLog(
+        LogLevel.INFO,
+        `Processing ${learnableMetaMapIds.length} Learnable Meta maps for regions`
+      );
       const metaRegionCache = await preloadMetaRegions(learnableMetaMapIds);
       Object.values(metaRegionCache).forEach((regionData) => {
         if (regionData && Array.isArray(regionData.regions)) {
           regionData.regions.forEach((region) => metaTagsSet.add(region));
         }
       });
-      debugLog('INFO', `Found ${metaTagsSet.size} total meta tags (including regions)`);
+      debugLog(LogLevel.INFO, `Found ${metaTagsSet.size} total meta tags (including regions)`);
 
       // Initialize AppState
       AppState.maps = maps;
@@ -2537,7 +2554,7 @@
       grid.style.flexGrow = '1';
       AppState.rerender();
 
-      debugLog('INFO', 'LMAO initialization completed successfully');
+      debugLog(LogLevel.INFO, 'LMAO initialization completed successfully');
     } finally {
       removeLoadingIndicator();
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -2593,13 +2610,13 @@
         }
         if (!gridInitialized) {
           gridInitialized = true;
-          debugLog('INFO', 'Grid found, initializing LMAO');
+          debugLog(LogLevel.INFO, 'Grid found, initializing LMAO');
           init();
 
           saveDevConfig();
         }
       } catch (e) {
-        debugLog('ERROR', 'Error during tryInit:', e);
+        debugLog(LogLevel.ERROR, 'Error during tryInit:', e);
       }
     }
 
