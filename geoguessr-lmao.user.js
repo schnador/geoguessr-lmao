@@ -309,6 +309,12 @@
     .lmao-header-button.lmao-clear-button:hover {
       background: var(--ds-color-red-80);
     }
+    .lmao-header-button.lmao-help-button {
+      background: var(--ds-color-blue-100);
+    }
+    .lmao-header-button.lmao-help-button:hover {
+      background: var(--ds-color-blue-80);
+    }
     .lmao-header-search-placeholder {
       width: 200px;
       height: 32px;
@@ -463,6 +469,98 @@
     }
     .lmao-tooltip label:hover {
       background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Help Popup Styles */
+    .lmao-help-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgb(16 16 28/95%);
+      border: 1px solid var(--ds-color-white-20);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      max-width: 500px;
+      width: 90%;
+      z-index: 10002;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+    .lmao-help-popup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--ds-color-white-20);
+    }
+    .lmao-help-popup-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: white;
+      margin: 0;
+    }
+    .lmao-help-popup-close {
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+    }
+    .lmao-help-popup-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .lmao-help-popup-content {
+      color: white;
+      line-height: 1.6;
+    }
+    .lmao-help-popup-section {
+      margin-bottom: 1rem;
+    }
+    .lmao-help-popup-section h3 {
+      color: var(--ds-color-blue-80);
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+    }
+    .lmao-help-popup-section p {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.875rem;
+    }
+    .lmao-help-popup-links {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--ds-color-white-20);
+    }
+    .lmao-help-popup-links a {
+      color: var(--ds-color-blue-80);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--ds-color-blue-80);
+      border-radius: 0.25rem;
+      transition: all 0.2s;
+    }
+    .lmao-help-popup-links a:hover {
+      background: var(--ds-color-blue-80);
+      color: white;
+    }
+    .lmao-help-popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10001;
     }
     .lmao-small-clear-button {
       background: var(--ds-color-red-100);
@@ -1808,6 +1906,122 @@
     return wrapper;
   }
 
+  function showHelpPopup() {
+    // Remove existing popup if any
+    const existingPopup = document.querySelector('.lmao-help-popup-overlay');
+    if (existingPopup) {
+      existingPopup.remove();
+    }
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'lmao-help-popup-overlay';
+
+    // Create popup
+    const popup = document.createElement('div');
+    popup.className = 'lmao-help-popup';
+
+    // Create header
+    const header = document.createElement('div');
+    header.className = 'lmao-help-popup-header';
+
+    const title = document.createElement('h2');
+    title.className = 'lmao-help-popup-title';
+    title.textContent = 'GeoGuessr LMAO Help';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'lmao-help-popup-close';
+    closeBtn.innerHTML = '×';
+    closeBtn.onclick = () => {
+      overlay.remove();
+    };
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    // Create content
+    const content = document.createElement('div');
+    content.className = 'lmao-help-popup-content';
+
+    // Script version section
+    const versionSection = document.createElement('div');
+    versionSection.className = 'lmao-help-popup-section';
+    const versionTitle = document.createElement('h3');
+    versionTitle.textContent = 'Script Version';
+    const versionText = document.createElement('p');
+    versionText.textContent = 'Current version: 1.1.0';
+    versionSection.appendChild(versionTitle);
+    versionSection.appendChild(versionText);
+
+    // Features section
+    const featuresSection = document.createElement('div');
+    featuresSection.className = 'lmao-help-popup-section';
+    const featuresTitle = document.createElement('h3');
+    featuresTitle.textContent = 'Features';
+    const featuresText = document.createElement('p');
+    featuresText.textContent =
+      'LMAO (Liked Maps Advanced Overhaul) enhances your GeoGuessr experience by adding organization and filtering capabilities to your liked maps. You can add custom tags, filter by various criteria, and integrate with Learnable Meta for enhanced map information.';
+    featuresSection.appendChild(featuresTitle);
+    featuresSection.appendChild(featuresText);
+
+    // Usage section
+    const usageSection = document.createElement('div');
+    usageSection.className = 'lmao-help-popup-section';
+    const usageTitle = document.createElement('h3');
+    usageTitle.textContent = 'How to Use';
+    const usageText = document.createElement('p');
+    usageText.textContent =
+      '• Use the search panel to filter maps by name or criteria\n• Click the edit mode button (✏️) to reorder and manage tags\n• Add custom tags to organize your maps\n• Use the clear button (🗑️) to reset all filters\n• Toggle tag visibility in the sidebar to focus on specific map types';
+    usageSection.appendChild(usageTitle);
+    usageSection.appendChild(usageText);
+
+    // Links section
+    const linksSection = document.createElement('div');
+    linksSection.className = 'lmao-help-popup-links';
+
+    const repoLink = document.createElement('a');
+    repoLink.href = 'https://github.com/schnador/geoguessr-lmao';
+    repoLink.target = '_blank';
+    repoLink.textContent = 'GitHub Repository';
+    repoLink.rel = 'noopener noreferrer';
+
+    const learnableMetaLink = document.createElement('a');
+    learnableMetaLink.href = 'https://learnablemeta.com';
+    learnableMetaLink.target = '_blank';
+    learnableMetaLink.textContent = 'Learnable Meta';
+    learnableMetaLink.rel = 'noopener noreferrer';
+
+    linksSection.appendChild(repoLink);
+    linksSection.appendChild(learnableMetaLink);
+
+    // Assemble popup
+    content.appendChild(versionSection);
+    content.appendChild(featuresSection);
+    content.appendChild(usageSection);
+    content.appendChild(linksSection);
+
+    popup.appendChild(header);
+    popup.appendChild(content);
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.remove();
+      }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function closeOnEscape(e) {
+      if (e.key === 'Escape') {
+        overlay.remove();
+        document.removeEventListener('keydown', closeOnEscape);
+      }
+    });
+  }
+
   function createCheckbox(labelText, checked, onChange, classList = null) {
     const label = document.createElement('label');
     const cb = document.createElement('input');
@@ -2533,6 +2747,16 @@
       true
     );
     headerActions.appendChild(clearFiltersWithTooltip);
+
+    // Help button with question mark emoji
+    const helpBtn = document.createElement('button');
+    helpBtn.innerHTML = '❓'; // Question mark emoji
+    helpBtn.className = 'lmao-header-button lmao-help-button';
+    helpBtn.onclick = () => {
+      showHelpPopup();
+    };
+    const helpBtnWithTooltip = createTooltip(helpBtn, 'Help & Information', true);
+    headerActions.appendChild(helpBtnWithTooltip);
 
     // Edit mode toggle button
     const editToggleBtn = document.createElement('button');
