@@ -1970,6 +1970,7 @@
     const usageTitle = document.createElement('h3');
     usageTitle.textContent = 'How to Use';
     const usageText = document.createElement('p');
+    usageText.style.whiteSpace = 'pre-line';
     usageText.textContent =
       '• Use the search panel to filter maps by name or criteria\n• Click the edit mode button (✏️) to reorder and manage tags\n• Add custom tags to organize your maps\n• Use the clear button (🗑️) to reset all filters\n• Toggle tag visibility in the sidebar to focus on specific map types';
     usageSection.appendChild(usageTitle);
@@ -2748,16 +2749,6 @@
     );
     headerActions.appendChild(clearFiltersWithTooltip);
 
-    // Help button with question mark emoji
-    const helpBtn = document.createElement('button');
-    helpBtn.innerHTML = '❓'; // Question mark emoji
-    helpBtn.className = 'lmao-header-button lmao-help-button';
-    helpBtn.onclick = () => {
-      showHelpPopup();
-    };
-    const helpBtnWithTooltip = createTooltip(helpBtn, 'Help & Information', true);
-    headerActions.appendChild(helpBtnWithTooltip);
-
     // Edit mode toggle button
     const editToggleBtn = document.createElement('button');
     editToggleBtn.innerHTML = '✏️'; // Pencil icon
@@ -2826,6 +2817,16 @@
         dropdownContent.classList.remove('show');
       }
     });
+
+    // Help button with question mark emoji
+    const helpBtn = document.createElement('button');
+    helpBtn.innerHTML = '❓'; // Question mark emoji
+    helpBtn.className = 'lmao-header-button lmao-help-button';
+    helpBtn.onclick = () => {
+      showHelpPopup();
+    };
+    const helpBtnWithTooltip = createTooltip(helpBtn, 'Help & Information', true);
+    headerActions.appendChild(helpBtnWithTooltip);
 
     return headerActions;
   }
