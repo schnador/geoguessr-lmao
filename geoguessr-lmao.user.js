@@ -310,10 +310,10 @@
       background: var(--ds-color-red-80);
     }
     .lmao-header-button.lmao-help-button {
-      background: var(--ds-color-blue-100);
+      background: var(--ds-color-purple-100);
     }
     .lmao-header-button.lmao-help-button:hover {
-      background: var(--ds-color-blue-80);
+      background: var(--ds-color-purple-80);
     }
     .lmao-header-search-placeholder {
       width: 200px;
@@ -1927,7 +1927,7 @@
 
     const title = document.createElement('h2');
     title.className = 'lmao-help-popup-title';
-    title.textContent = 'GeoGuessr LMAO Help';
+    title.textContent = `GeoGuessr LMAO V${GM_info.script.version}`;
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'lmao-help-popup-close';
@@ -1943,16 +1943,6 @@
     const content = document.createElement('div');
     content.className = 'lmao-help-popup-content';
 
-    // Script version section
-    const versionSection = document.createElement('div');
-    versionSection.className = 'lmao-help-popup-section';
-    const versionTitle = document.createElement('h3');
-    versionTitle.textContent = 'Script Version';
-    const versionText = document.createElement('p');
-    versionText.textContent = 'Current version: 1.1.0';
-    versionSection.appendChild(versionTitle);
-    versionSection.appendChild(versionText);
-
     // Features section
     const featuresSection = document.createElement('div');
     featuresSection.className = 'lmao-help-popup-section';
@@ -1960,7 +1950,7 @@
     featuresTitle.textContent = 'Features';
     const featuresText = document.createElement('p');
     featuresText.textContent =
-      'LMAO (Liked Maps Advanced Overhaul) enhances your GeoGuessr experience by adding organization and filtering capabilities to your liked maps. You can add custom tags, filter by various criteria, and integrate with Learnable Meta for enhanced map information.';
+      'LMAO (Liked Maps Advanced Overhaul) enhances your "Liked Maps" page by adding organization and filtering capabilities to your liked maps. You can add custom tags, filter by various criteria, and integrate with Learnable Meta for enhanced map information.';
     featuresSection.appendChild(featuresTitle);
     featuresSection.appendChild(featuresText);
 
@@ -1972,7 +1962,7 @@
     const usageText = document.createElement('p');
     usageText.style.whiteSpace = 'pre-line';
     usageText.textContent =
-      '• Use the search panel to filter maps by name or criteria\n• Click the edit mode button (✏️) to reorder and manage tags\n• Add custom tags to organize your maps\n• Use the clear button (🗑️) to reset all filters\n• Toggle tag visibility in the sidebar to focus on specific map types';
+      '• Click the edit mode button (✏️) to add tags, reorder and manage tags\n• Use the sidebar to filter maps by tags\n• Use the search panel to filter maps by name or other criteria\n• Use the clear button (🗑️) to reset all filters\n• Toggle tag visibility in the sidebar to remove clutter.';
     usageSection.appendChild(usageTitle);
     usageSection.appendChild(usageText);
 
@@ -1996,7 +1986,6 @@
     linksSection.appendChild(learnableMetaLink);
 
     // Assemble popup
-    content.appendChild(versionSection);
     content.appendChild(featuresSection);
     content.appendChild(usageSection);
     content.appendChild(linksSection);
@@ -2752,11 +2741,11 @@
     // Edit mode toggle button
     const editToggleBtn = document.createElement('button');
     editToggleBtn.innerHTML = '✏️'; // Pencil icon
-    editToggleBtn.className = 'lmao-edit-toggle' + (AppState.editMode ? ' active' : '');
+    editToggleBtn.className = 'lmao-header-button lmao-edit-toggle' + (AppState.editMode ? ' active' : '');
     editToggleBtn.onclick = () => {
       const newMode = !AppState.editMode;
       AppState.updateEditMode(newMode);
-      editToggleBtn.className = 'lmao-edit-toggle' + (newMode ? ' active' : '');
+      editToggleBtn.className = 'lmao-header-button lmao-edit-toggle' + (newMode ? ' active' : '');
     };
     const editToggleWithTooltip = createTooltip(editToggleBtn, 'Toggle Edit Mode', true);
     headerActions.appendChild(editToggleWithTooltip);
