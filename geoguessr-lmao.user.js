@@ -2316,9 +2316,9 @@
       case 'api':
         return AppState.apiTagsList;
       case 'region':
-        return AppState.regionTagsList;
-      case 'learnableMeta':
         return AppState.metaTagsList.filter((tag) => tag !== 'Learnable Meta');
+      case 'learnableMeta':
+        return AppState.metaTagsList.filter((tag) => tag === 'Learnable Meta');
       default:
         return [];
     }
@@ -3389,9 +3389,7 @@
       debugLog(LogLevel.INFO, `Found ${metaTagsSet.size} total meta tags (including regions)`);
 
       // Initialize AppState
-
       const lmaoState = loadLMAOState();
-      console.log('lmaoState TEST', lmaoState);
 
       AppState.maps = maps;
       AppState.userTagsList = Array.from(userTagsSet).sort();
