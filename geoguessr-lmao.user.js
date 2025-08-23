@@ -1982,6 +1982,12 @@
     learnableMetaLink.textContent = 'Learnable Meta';
     learnableMetaLink.rel = 'noopener noreferrer';
 
+    const signature = document.createElement('p');
+    signature.textContent = 'Made by schnador\nwith ❤️';
+    signature.style.whiteSpace = 'pre-line';
+    signature.style.textAlign = 'center';
+    linksSection.appendChild(signature);
+
     linksSection.appendChild(repoLink);
     linksSection.appendChild(learnableMetaLink);
 
