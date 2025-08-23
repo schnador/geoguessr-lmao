@@ -23,5 +23,10 @@
   },
   // Recommended extensions
   "extensions.ignoreRecommendations": false,
-  "github.copilot.chat.reviewSelection.instructions": [{ "file": ".github/instructions/userscript.instructions.md" }]
+  "github.copilot.chat.reviewSelection.instructions": [
+    {
+      "file": ".github/instructions/userscript.instructions.md"
+    }
+  ],
+  "kiroAgent.configureMCP": "Disabled"
 }

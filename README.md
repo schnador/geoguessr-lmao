@@ -14,16 +14,13 @@ A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr
 
 - **Tagging:** Add, edit, and filter custom tags for your liked maps.
 - **Filtering:** Easily filter maps by their tags - Default tags and custom tags.
+- **Searching:** Use the searchbar to find maps by their name, description, author and corresponding tags
 - **De-clutter:** You can now hide the barely useful default tags provided by geoguessr. More space for custom tags 😎
-- **Learnable Meta Integration:** Instantly see which maps are supported by [Learnable Meta](https://learnablemeta.com/).
+- **Learnable Meta Integration:** Instantly see which maps are supported by [Learnable Meta](https://learnablemeta.com/). Regions are also tagged for you.
 
-Unfiltered:
-
-![Unfiltered](https://github.com/schnador/geoguessr-lmao/raw/main/img/activated.png)
-
-Filtered:
-
-![Filtered](https://github.com/schnador/geoguessr-lmao/raw/main/img/filtered.png)
+| Unfiltered                                                                           | Filtered                                                                          |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| ![Unfiltered](https://github.com/schnador/geoguessr-lmao/raw/main/img/activated.png) | ![Filtered](https://github.com/schnador/geoguessr-lmao/raw/main/img/filtered.png) |
 
 ---
 
@@ -40,36 +37,71 @@ Filtered:
 
 ## Usage
 
+### General Usage
+
 1. Visit your [Liked Maps page](https://www.geoguessr.com/me/likes) on GeoGuessr.
 2. Add tags
 
-   - Enable "Edit tags" (bottom of the controls panel)
+   - Enable Editmode (✏️)
    - Add a tag by either entering a text or selecting one from the list of available tags:
      ![Add a tag](https://github.com/schnador/geoguessr-lmao/raw/main/img/add-tag.png)
    - Press enter to confirm
-   - Disable "Edit tags" when you are done
+   - Disable Editmode (✏️) when you are done
 
-3. Use the control panel to:
+3. Use the sidebar to:
    - Filter maps by tags
      - "Any"-Mode: Shows maps, which contain ANY of the selected tags.
      - "All"-Mode: Shows maps, which contains ALL of the selected tags.
-   - Toggle visibility of user, Learnable Meta, and default tags
-   - Learnable Meta maps are automatically recognized and tagged!
+   - Toggle visibility of user, Learnable Meta, regions and default tags
+   - Learnable Meta maps are automatically recognized and tagged along with their regions!
+
+### Clearing the filters
+
+To clear the current filters, just click the 🗑️ button
+
+### Searchpanel
+
+Use the searchpanel to search text in your liked maps.
+You can use the button left of the searchpanel to restrict your search to parts of the following categories:
+
+- Map name
+- Map description
+- Map creator name
+- Tags
+
+![Searching](https://github.com/schnador/geoguessr-lmao/raw/main/img/searching.png)
+
+### Reordering your tags
+
+You can easily reorder your tags in the sidebar via drag and drop when in editmode (✏️).
+
+![Reordering](https://github.com/schnador/geoguessr-lmao/raw/main/img/reordering.png)
+
+### Exporting & Importing your tags (+ Backups)
+
+If you play geoguessr on different devices or browsers, you can use the export and import buttons in ⚙️
+
+This simply downloads a json file which you can then import again.
+
+Also useful for making backups!
 
 ---
 
 ## Future plans
 
-- Automatically add Learnable Meta category tags from https://learnablemeta.com/maps
-  - for example: "World", "Europe", "Asia", etc..
-- Rework layout & styling for better usability
+- Add a grid-view instead of the default map teasers
 - Create video to show installation and usage
-- Persist filterstate
-- Delete all filters button
 - Integrate with available scripts that work on the liked maps page
+- Sort and reorder maps
+  - Geoguessrs default behaviour for this is awful. You would have to unlike and then like maps in the reverse order you wish them to be in.
+- Keybinds
+- Configure visible data in the map teasers
+- Display 5k radius
+  - Since Mapmakers can choose to set this value manually, it should be visible to the user.
 - Filter favourites??
 
-**Feel free to add suggestions under ["Issues"](https://github.com/schnador/geoguessr-lmao/issues/new) with the tag "enhancement"**
+**Feel free to add suggestions under ["Issues"](https://github.com/schnador/geoguessr-lmao/issues/new) with the tag "enhancement".**
+**Also, if you want to contribute - please do!**
 
 ---
 
@@ -90,6 +122,10 @@ All tags and settings are fetched from their API and stored locally in your brow
 
 The Learnable Meta integration works by checking maps which don't have a localStorage entry via the Learnable Meta API, just as the Learnable Meta userscript would.
 This information is stored locally, and never refetched unless you clean your localStorage to keep the API calls to a minimum.
+
+Additionally, the regions for Learnable Meta maps (World, Europe, Asia, etc..) are also fetched from the Learnable Meta API.
+
+**This functionality is approved by the developer of [Learnable Meta](https://github.com/likeon/geometa)!**
 
 I will do the best to react quickly to any changes in the Learnable Meta userscript to keep the integration seamless.
 
