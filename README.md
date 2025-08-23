@@ -6,7 +6,7 @@ A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr
 
 [GITHUB](https://github.com/schnador/geoguessr-lmao)
 
-[GREASYFORK](https://greasyfork.org/en/scripts/543001-geoguessr-liked-maps-advanced-overhaul-lmao)
+[DOWNLOAD (GREASYFORK)](https://greasyfork.org/en/scripts/543001-geoguessr-liked-maps-advanced-overhaul-lmao)
 
 ---
 
