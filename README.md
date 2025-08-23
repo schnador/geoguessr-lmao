@@ -18,13 +18,9 @@ A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr
 - **De-clutter:** You can now hide the barely useful default tags provided by geoguessr. More space for custom tags 😎
 - **Learnable Meta Integration:** Instantly see which maps are supported by [Learnable Meta](https://learnablemeta.com/). Regions are also tagged for you.
 
-Unfiltered:
-
-![Unfiltered](https://github.com/schnador/geoguessr-lmao/raw/main/img/activated.png)
-
-Filtered:
-
-![Filtered](https://github.com/schnador/geoguessr-lmao/raw/main/img/filtered.png)
+| Unfiltered                                                                           | Filtered                                                                          |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| ![Unfiltered](https://github.com/schnador/geoguessr-lmao/raw/main/img/activated.png) | ![Filtered](https://github.com/schnador/geoguessr-lmao/raw/main/img/filtered.png) |
 
 ---
 
@@ -63,10 +59,6 @@ Filtered:
 
 To clear the current filters, just click the 🗑️ button
 
-### Reordering your tags
-
-You can easily reorder your tags in the sidebar via drag and drop when in editmode (✏️).
-
 ### Searchpanel
 
 Use the searchpanel to search text in your liked maps.
@@ -77,13 +69,21 @@ You can use the button left of the searchpanel to restrict your search to parts 
 - Map creator name
 - Tags
 
+![Searching](https://github.com/schnador/geoguessr-lmao/raw/main/img/searching.png)
+
+### Reordering your tags
+
+You can easily reorder your tags in the sidebar via drag and drop when in editmode (✏️).
+
+![Reordering](https://github.com/schnador/geoguessr-lmao/raw/main/img/reordering.png)
+
 ### Exporting & Importing your tags (+ Backups)
 
-If you play geoguessr on different devices or browsers, you can always use the export and import buttons in ⚙️
+If you play geoguessr on different devices or browsers, you can use the export and import buttons in ⚙️
 
 This simply downloads a json file which you can then import again.
 
-This is also useful for making backups.
+Also useful for making backups!
 
 ---
 
@@ -92,12 +92,16 @@ This is also useful for making backups.
 - Add a grid-view instead of the default map teasers
 - Create video to show installation and usage
 - Integrate with available scripts that work on the liked maps page
+- Sort and reorder maps
+  - Geoguessrs default behaviour for this is awful. You would have to unlike and then like maps in the reverse order you wish them to be in.
 - Keybinds
 - Configure visible data in the map teasers
 - Display 5k radius
+  - Since Mapmakers can choose to set this value manually, it should be visible to the user.
 - Filter favourites??
 
-**Feel free to add suggestions under ["Issues"](https://github.com/schnador/geoguessr-lmao/issues/new) with the tag "enhancement"**
+**Feel free to add suggestions under ["Issues"](https://github.com/schnador/geoguessr-lmao/issues/new) with the tag "enhancement".**
+**Also, if you want to contribute - please do!**
 
 ---
 
@@ -120,6 +124,8 @@ The Learnable Meta integration works by checking maps which don't have a localSt
 This information is stored locally, and never refetched unless you clean your localStorage to keep the API calls to a minimum.
 
 Additionally, the regions for Learnable Meta maps (World, Europe, Asia, etc..) are also fetched from the Learnable Meta API.
+
+**This functionality is approved by the developer of [Learnable Meta](https://github.com/likeon/geometa)!**
 
 I will do the best to react quickly to any changes in the Learnable Meta userscript to keep the integration seamless.
 
