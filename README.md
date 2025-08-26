@@ -1,12 +1,12 @@
 # [GeoGuessr Liked Maps Advanced Overhaul (LMAO)](https://github.com/schnador/geoguessr-lmao)
 
-<img src="./img/lmao_icon.png" alt="drawing" width="50"/>
+[DOWNLOAD (OPENUSERJS)](<https://openuserjs.org/scripts/snador/GeoGuessr_Liked_Maps_Advanced_Overhaul_(LMAO)>) |
+[DOWNLOAD (GREASYFORK)](https://greasyfork.org/en/scripts/543001-geoguessr-liked-maps-advanced-overhaul-lmao) |
+[GITHUB](https://github.com/schnador/geoguessr-lmao)
 
 A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr](https://www.geoguessr.com/). Add custom tags, filter maps, with instant Learnable Meta integration.
 
-[GITHUB](https://github.com/schnador/geoguessr-lmao)
-
-[DOWNLOAD (GREASYFORK)](https://greasyfork.org/en/scripts/543001-geoguessr-liked-maps-advanced-overhaul-lmao)
+<img src="./img/lmao_icon.png" alt="drawing" width="50"/>
 
 ---
 
@@ -31,6 +31,7 @@ A powerful userscript for organizing and enhancing your liked maps on [GeoGuessr
    - [Violentmonkey](https://violentmonkey.github.io/)
 2. (if you use chrome/edge/chromium based browser) [Enable developer mode](https://www.tampermonkey.net/faq.php?locale=en#Q209) for Chrome extensions
 3. **Install the script:**
+   - [Install via OpenUserJS](<https://openuserjs.org/scripts/snador/GeoGuessr_Liked_Maps_Advanced_Overhaul_(LMAO)>)
    - [Install via GreasyFork](https://greasyfork.org/en/scripts/543001-geoguessr-liked-maps-advanced-overhaul-lmao)
 
 ---
