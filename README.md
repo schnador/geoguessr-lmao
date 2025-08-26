@@ -133,7 +133,7 @@ I will do the best to react quickly to any changes in the Learnable Meta userscr
 
 ## License
 
-[Unlicense](https://unlicense.org/) — Public domain, do whatever you want.
+[Licensed under MIT](https://mit-license.org/)
 
 ---
 
@@ -141,3 +141,5 @@ I will do the best to react quickly to any changes in the Learnable Meta userscr
 
 - Script by [snador](https://github.com/schnador)
 - [Learnable Meta](https://learnablemeta.com/) for their great work.
+
+// Copyright (c) 2025 schnador
